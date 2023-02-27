@@ -10,7 +10,6 @@ export function defineConfig(options: Options = {}) {
         target: "es2022",
         skipNodeModulesBundle: true,
         clean: true,
-        shims: true,
         minify: false,
         splitting: false,
         keepNames: true,
