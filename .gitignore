@@ -6,4 +6,5 @@
 !.yarn/sdks
 !.yarn/versions
 .turbo
+node_modules
 dist
