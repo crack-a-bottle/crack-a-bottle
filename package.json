@@ -1,0 +1,24 @@
+{
+  "name": "@crackabottle/monorepo",
+  "version": "0.0.0",
+  "description": "The monorepo for crack-a-bottle.",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crack-a-bottle/crack-a-bottle.git"
+  },
+  "author": "hiimjustin000",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crack-a-bottle/crack-a-bottle/issues"
+  },
+  "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
+  "devDependencies": {
+    "tsup": "^6.6.3",
+    "turbo": "^1.8.2"
+  },
+  "workspaces": [
+    "./packages/*"
+  ],
+  "packageManager": "yarn@3.4.1"
+}

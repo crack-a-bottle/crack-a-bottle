@@ -1,0 +1,40 @@
+{
+  "name": "@crackabottle/png",
+  "version": "1.0.0",
+  "description": "The PNG plugin for crack-a-bottle.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepack": "yarn build",
+    "test": "node examples"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crack-a-bottle/crack-a-bottle.git"
+  },
+  "author": "hiimjustin000",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crack-a-bottle/crack-a-bottle/issues"
+  },
+  "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
+  "devDependencies": {
+    "@types/node": "^18.11.18",
+    "esbuild-plugin-version-injector": "^1.0.3",
+    "tsup": "^6.6.3",
+    "typescript": "^4.9.5"
+  }
+}
