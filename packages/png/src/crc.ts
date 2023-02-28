@@ -11,11 +11,11 @@ for (let i = 0; i < 256; i++) {
 class CRC {
     #crc = -1;
 
-    read() {
+    public read() {
         return this.#crc ^ -1;
     }
 
-    write(data: Buffer) {
+    public write(data: Buffer) {
         for (let i = 0; i < data.length; i++) {
             this.#crc = crcTable[(this.#crc ^ data[i]) & 255] ^ (this.#crc >>> 8);
         }

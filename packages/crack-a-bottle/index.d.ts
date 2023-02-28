@@ -1,7 +1,9 @@
-import PNG from "@crackabottle/png";
-
-export {
-    PNG
+declare module "crack-a-bottle" {
+    export {
+        PNGData,
+        PNGHeader,
+        PNGOptions,
+        PNGType,
+        default as PNG
+    } from "@crackabottle/png";
 }
-
-export * from "@crackabottle/png"

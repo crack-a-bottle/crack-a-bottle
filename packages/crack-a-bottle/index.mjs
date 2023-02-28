@@ -1,5 +1,1 @@
-import PNG from "@crackabottle/png";
-
-export {
-    PNG
-}
+export { PNGType, default as PNG } from "@crackabottle/png";

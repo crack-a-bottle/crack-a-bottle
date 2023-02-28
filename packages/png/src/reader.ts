@@ -8,15 +8,15 @@ class Reader {
     #reads: ReadInfo[] = [];
     #buffer: Buffer;
 
-    constructor(buffer: Buffer) {
+    public constructor(buffer: Buffer) {
         this.#buffer = buffer;
     }
 
-    read(length: number, callback: (buf: Buffer) => void) {
+    public read(length: number, callback: (buf: Buffer) => void) {
         this.#reads.push({ length: Math.abs(length), allowLess: length < 0, callback });
     }
 
-    process() {
+    public process() {
         while (this.#reads.length > 0 && this.#buffer.length) {
             const read = this.#reads[0];
             if (this.#buffer.length && (this.#buffer.length >= read.length || read.allowLess)) {

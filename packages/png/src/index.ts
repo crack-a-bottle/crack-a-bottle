@@ -40,7 +40,7 @@ class PNG {
     public data: Buffer | Uint16Array;
     public chunks: { [key: string]: Buffer } = {};
 
-    constructor(data: Buffer, { checkCRC = false, keepScale = false, noUnfilter = false, noParse = false }: PNGOptions) {
+    public constructor(data: Buffer, { checkCRC = false, keepScale = false, noUnfilter = false, noParse = false }: PNGOptions) {
         let png = Buffer.isBuffer(data) ? data : null;
         if (png == null) {
             try {
@@ -107,7 +107,7 @@ class PNG {
         } else this.data = outputData!;
     }
 
-    toJSON() {
+    public toJSON() {
         const json: PNGData = {
             header: this.header,
             data: Array.from(this.data),

@@ -1,4 +1,4 @@
-import { PNGHeader } from ".";
+import type { PNGHeader } from ".";
 import * as adam7 from "./adam7";
 import { BPP_MAP as bppMap } from "./constants";
 import Reader from "./reader";
@@ -23,7 +23,7 @@ class Filter {
     #reader: Reader;
     #lastLine: Buffer | null = null;
 
-    constructor(buffer: Buffer, { width, height, depth, type, interlace }: PNGHeader) {
+    public constructor(buffer: Buffer, { width, height, depth, type, interlace }: PNGHeader) {
         const bpp = bppMap[type];
 
         if (interlace) {
@@ -36,7 +36,7 @@ class Filter {
         this.#reader = new Reader(buffer);
     }
 
-    data() {
+    public data() {
         this.#reader.read(this.#images[this.#index].byteWidth + 1, this.#reverseFilterLine.bind(this));
         this.#reader.process();
 

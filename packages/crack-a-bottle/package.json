@@ -10,12 +10,6 @@
     "require": "./index.js",
     "types": "./index.d.ts"
   },
-  "bin": {
-    "crackabottle": "bin/crackabottle.js"
-  },
-  "scripts": {
-    "test": "crackabottle"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crack-a-bottle/crack-a-bottle.git"

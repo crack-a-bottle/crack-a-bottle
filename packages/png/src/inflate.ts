@@ -1,5 +1,5 @@
 import * as zlib from "zlib";
-import { PNGHeader } from ".";
+import type { PNGHeader } from ".";
 import { BPP_MAP as bppMap } from "./constants";
 
 function inflate(data: Buffer, { width, height, depth, type, interlace }: PNGHeader) {
