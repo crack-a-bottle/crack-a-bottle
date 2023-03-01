@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
-    "@types/node": "^18.11.18"
+    "@types/node": "^18.14.2"
   },
   "dependencies": {
     "@crackabottle/png": "workspace:^",

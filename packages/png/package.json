@@ -33,7 +33,7 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
-    "@types/node": "^18.11.18",
+    "@types/node": "^18.14.2",
     "esbuild-plugin-version-injector": "^1.0.3",
     "tsup": "^6.6.3",
     "typescript": "^4.9.5"
