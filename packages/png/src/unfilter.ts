@@ -23,11 +23,11 @@ function unfilter(data: Buffer, header: PNGHeader) {
 
     for (const currentImage of images) {
         const { byteWidth, height } = currentImage;
-        for (let i = 0; i < currentImage.height; i++) {
-            const filter = data[i * height];
+        for (let i = 0; i < height; i++) {
+            const filter = data[i * (byteWidth + 1)];
             if (filter > 4 || filter < 0) throw new RangeError(`Unrecognized filter type ${filter}`);
 
-            const filteredLine = data.subarray(i * height + 1, (i + 1) * byteWidth + 1);
+            const filteredLine = data.subarray(i * (byteWidth + 1) + 1, (i + 1) * (byteWidth + 1));
             if (filter > 0) {
                 const unfilteredLine = Buffer.allocUnsafe(byteWidth);
                 for (let x = 0; x < byteWidth; x++) {

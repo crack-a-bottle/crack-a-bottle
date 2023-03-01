@@ -128,9 +128,9 @@ function png(data: Buffer, { checkCRC = false, keepFilter = false }: PNGOptions 
         (((json.header.width * bppMap[json.header.type] * depth + 7) >> 3) + 1) * json.header.height, zlib.constants.Z_MIN_CHUNK) } : {});
     if (!json.data || !json.data.length) throw new Error("Invalid PNG inflate response");
 
-    if (!keepFilter && json.data[0] > 0) json.data = filter(json.data, json.header);
+    if (!keepFilter) json.data = filter(json.data, json.header);
 
-    if (depth < 8) json.data = Buffer.from(Array.from(json.data).flatMap(x => Array(8 / depth).map((y, i) => x >> (depth * i) & 1)));
+    if (depth < 8) json.data = Buffer.from(Array.from(json.data).flatMap(x => Array(8 / depth).map((y, i) => x >> (depth * i) & (2 ** depth - 1))));
     else if (depth > 8) json.data = new Uint16Array(json.data.buffer);
 
     return new _PNG(json);
