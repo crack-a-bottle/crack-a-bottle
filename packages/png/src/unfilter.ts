@@ -19,7 +19,7 @@ function unfilter(data: Buffer, header: PNGHeader) {
         }
     } else images.push({ byteWidth: Math.ceil(header.width * bpp / (8 / header.depth)), height: header.height });
 
-    const xComparison = header.depth == 8 ? bpp : (header.depth == 16 ? bpp * 2 : 1);
+    const xComparison = Math.max(1, bpp / 8);
 
     for (const currentImage of images) {
         const { byteWidth, height } = currentImage;
@@ -40,8 +40,7 @@ function unfilter(data: Buffer, header: PNGHeader) {
                             addend = lastLine ? lastLine[x] : 0;
                             break;
                         case 3:
-                            addend = Math.floor(((x > (xComparison - 1) ? unfilteredLine[x - xComparison] : 0) +
-                                        (lastLine ? lastLine[x] : 0)) / 2);
+                            addend = Math.floor(((x > (xComparison - 1) ? unfilteredLine[x - xComparison] : 0) + (lastLine ? lastLine[x] : 0)) / 2);
                             break;
                         case 4:
                             const left = x > (xComparison - 1) ? unfilteredLine[x - xComparison] : 0;

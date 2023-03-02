@@ -1,7 +1,7 @@
 import zlib from "zlib";
 import CRC from "./crc";
 import { BYTES_PER_PIXEL as bppMap, SIGNATURE } from "./constants";
-import filter from "./unfilter";
+import unfilter from "./unfilter";
 
 export interface PNG {
     header: PNGHeader;
@@ -105,12 +105,12 @@ function png(data: Buffer, { checkCRC = false, keepFilter = false }: PNGOptions 
                 json.palette = chkData;
                 break;
             case "IDAT":
-                json.data = json.data != null ? Buffer.concat([json.data as Buffer, chkData]) : chkData;
+                json.data = Buffer.concat([(json.data ?? Buffer.from("")) as Buffer, chkData]);
                 break;
             case "IEND":
                 break;
             default:
-                json.chunks[chkType] = json.chunks[chkType] ? Buffer.concat([json.chunks[chkType], chkData]) : chkData;
+                json.chunks[chkType] = Buffer.concat([json.chunks[chkType] ?? Buffer.from(""), chkData]);
                 break;
         }
 
@@ -121,17 +121,19 @@ function png(data: Buffer, { checkCRC = false, keepFilter = false }: PNGOptions 
         }
     }
 
-    const { depth } = json.header;
+    const { width, height, depth, type, interlace } = json.header;
     if (![1, 2, 4, 8, 16].includes(depth)) throw new SyntaxError(`Unrecognized bit depth ${depth}`);
 
-    json.data = zlib.inflateSync(json.data as Buffer, !json.header.interlace ? { chunkSize: Math.max(
-        (((json.header.width * bppMap[json.header.type] * depth + 7) >> 3) + 1) * json.header.height, zlib.constants.Z_MIN_CHUNK) } : {});
+    json.data = zlib.inflateSync(json.data as Buffer, {
+        chunkSize: interlace ? 16384 : Math.max((((width * bppMap[type] * depth + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
+    });
     if (!json.data || !json.data.length) throw new Error("Invalid PNG inflate response");
 
-    if (!keepFilter) json.data = filter(json.data, json.header);
-
-    if (depth < 8) json.data = Buffer.from(Array.from(json.data).flatMap(x => Array(8 / depth).map((y, i) => x >> (depth * i) & (2 ** depth - 1))));
-    else if (depth > 8) json.data = new Uint16Array(json.data.buffer);
+    if (!keepFilter) {
+        json.data = unfilter(json.data, json.header);
+        json.data = depth <= 8 ? Buffer.from(Array.from(json.data).flatMap(x => Array(8 / depth).fill(0)
+            .map((y, i) => (x >> (depth * i)) & (2 ** depth - 1)))) : new Uint16Array(json.data.buffer);
+    }
 
     return new _PNG(json);
 }
