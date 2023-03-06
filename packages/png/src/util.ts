@@ -1,4 +1,4 @@
-import { PNGType } from "./types";
+import { PNGType } from ".";
 
 export function getBit(num: number, index: number) {
     return ((num >> index) & 1) > 0;

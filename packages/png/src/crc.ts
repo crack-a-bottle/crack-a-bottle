@@ -1,5 +1,5 @@
 // Cyclic redundancy checker (In case of errors n shit)
-export = class CRC {
+export class CRC {
     public static readonly TABLE = [
         0x00000000,
         0x77073096,

@@ -1,5 +1,5 @@
 // I'm actually surprised at how this turned out
-import { PNGFilter, type PNGHeader } from "./types";
+import { PNGFilter, type PNGHeader } from ".";
 import { getPassLength, IMAGE_PASSES as passes } from "./adam7";
 import { EMPTY_BUFFER } from "./constants";
 import * as util from "./util";
