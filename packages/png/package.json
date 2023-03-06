@@ -1,7 +1,7 @@
 {
   "name": "@crackabottle/png",
   "version": "1.0.0",
-  "description": "The PNG plugin for crack-a-bottle.",
+  "description": "The Portable Network Graphics plugin for crack-a-bottle.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -19,8 +19,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "prepack": "yarn build",
-    "test": "node examples"
+    "prepack": "yarn build"
   },
   "repository": {
     "type": "git",
@@ -33,7 +32,7 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
-    "@types/node": "^18.14.2",
+    "@types/node": "^18.14.6",
     "esbuild-plugin-version-injector": "^1.0.3",
     "tsup": "^6.6.3",
     "typescript": "^4.9.5"

@@ -1,6 +1,6 @@
-const { default: PNG, PNGType } = require("@crackabottle/png");
+const { default: png, PNGType } = require("@crackabottle/png");
 
 module.exports = {
-    PNG,
+    png,
     PNGType
 }

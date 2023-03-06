@@ -1,89 +1,49 @@
-import zlib from "zlib";
+import * as zlib from "zlib";
+import { EMPTY_BUFFER, SIGNATURE } from "./constants";
 import CRC from "./crc";
-import { BYTES_PER_PIXEL as bppMap, SIGNATURE } from "./constants";
-import unfilter from "./unfilter";
+import * as filter from "./filter";
+import * as util from "./util";
+import { BasePNGStream, PNGChunks, PNGData, PNGHeader, PNGObject, PNGStream } from "./types";
 
-export interface PNG {
-    header: PNGHeader;
-    palette?: Buffer;
-    data: Buffer | Uint16Array | null;
-    chunks: { [key: string]: Buffer };
-}
-
-export interface ParseablePNG extends PNG {
-    toJSON(): PNGData;
-}
-
-export interface PNGData {
-    header: PNGHeader;
-    palette?: number[];
-    data: number[];
-    chunks: { [key: string]: number[] };
-}
-
-export interface PNGHeader {
-    width: number;
-    height: number;
-    depth: number;
-    type: PNGType;
-    interlace: boolean;
-}
-
-export enum PNGType {
-    GRAYSCALE = 0,
-    TRUECOLOR = 2,
-    INDEX_COLOR = 3,
-    GRAYSCALE_ALPHA = 4,
-    TRUECOLOR_ALPHA = 6
-}
-
-export type PNGOptions = {
-    checkCRC?: boolean;
-    keepFilter?: boolean;
-}
-
-class _PNG implements ParseablePNG {
+class PNG implements PNGStream {
     public header: PNGHeader;
     public palette?: Buffer;
-    public data: Buffer | Uint16Array;
-    public chunks: { [key: string]: Buffer };
+    public data: PNGData;
+    public chunks: PNGChunks;
 
-    public constructor(data: PNG) {
+    public constructor(data: BasePNGStream) {
         this.header = data.header;
         if (data.palette) this.palette = data.palette;
-        this.data = data.data!;
+        this.data = data.data;
         this.chunks = data.chunks;
     }
 
-    public toJSON() {
-        const json: PNGData = {
+    public toJSON(): PNGObject {
+        return {
             header: this.header,
-            data: Array.from(this.data),
-            chunks: Object.fromEntries(Object.entries(this.chunks).map(x => [x[0], Array.from(x[1])]))
+            palette: this.palette ? this.palette.toJSON().data : undefined,
+            chunks: util.map((x, y) => [y, util.checkArray(x)], this.chunks),
+            data: {
+                compressed: util.checkArray(this.data.compressed),
+                filtered: util.checkArray(this.data.filtered),
+                original: util.checkArray(this.data.original),
+            }
         }
-        if (this.palette) json.palette = Array.from(this.palette);
-        return json;
     }
 }
 
-function png(data: Buffer, { checkCRC = false, keepFilter = false }: PNGOptions = { checkCRC: false, keepFilter: false }): ParseablePNG {
-    if (!data.subarray(0, 8).equals(Buffer.from(SIGNATURE, "hex"))) throw new SyntaxError("Invalid or missing PNG signature");
+export = function png(data: Buffer, checkCRC: boolean = false): PNGStream {
+    if (!data.subarray(0, 8).equals(SIGNATURE)) throw new SyntaxError("#: Signature not found at start of datastream");
 
-    const json: PNG = {
-        header: { width: 0, height: 0, depth: 0, type: 0, interlace: false },
-        data: null,
+    const json: BasePNGStream = {
+        header: { width: 0, height: 0, depth: 0, type: 0, methods: { compression: 0, filter: 0 }, interlace: false },
+        data: { original: EMPTY_BUFFER, filtered: EMPTY_BUFFER, compressed: EMPTY_BUFFER },
         chunks: {}
     }
-    for (let i = 8; i < data.length; i += 4) {
+    for (let i = 8; i < data.length; i += 12) {
         const chkLength = data.readUInt32BE(i);
-        i += 4;
-        const chkType = String.fromCharCode(data[i++], data[i++], data[i++], data[i++]);
-        const chkData = Buffer.allocUnsafe(chkLength);
-        if (chkLength > 0) {
-            for (let j = 0; j < chkLength; j++) {
-                chkData[j] = data[i++];
-            }
-        }
+        const chkType = data.subarray(i + 4, i + 8).toString("utf8");
+        const chkData = data.subarray(i + 8, i + chkLength + 8);
 
         const crc = checkCRC ? new CRC() : null;
         if (checkCRC) {
@@ -92,50 +52,96 @@ function png(data: Buffer, { checkCRC = false, keepFilter = false }: PNGOptions 
         }
 
         switch (chkType) {
-            case "IHDR":
-                json.header = {
-                    width: chkData.readUInt32BE(0),
-                    height: chkData.readUInt32BE(4),
-                    depth: chkData[8],
-                    type: chkData[9],
-                    interlace: chkData[12] > 0
-                }
+            case "IHDR": // Image header chunk
+                if (![1, 2, 4, 8, 16].includes(chkData[8])) throw new SyntaxError(`IHDR: Unrecognized bit depth ${chkData[8]}`);
+                if (![0, 2, 3, 4, 6].includes(chkData[9])) throw new SyntaxError(`IHDR: Unsupported color type ${chkData[9]}`);
+                if (chkData[10] != 0) throw new SyntaxError(`IHDR: Unsupported compression method ${chkData[10]}`);
+                if (chkData[11] != 0) throw new SyntaxError(`IHDR: Unsupported filter method ${chkData[11]}`);
+                if (chkData[12] > 1) throw new SyntaxError(`IHDR: Unsupported interlace method ${chkData[12]}`);
+
+                json.header.width = chkData.readUInt32BE(0);
+                json.header.height = chkData.readUint32BE(4);
+                json.header.depth = chkData[8];
+                json.header.type = chkData[9];
+                json.header.methods.compression = chkData[10];
+                json.header.methods.filter = chkData[11];
+                json.header.interlace = chkData[12] > 0;
                 break;
-            case "PLTE":
+            case "PLTE": // Color palette chunk (Required for type 3 only)
                 json.palette = chkData;
                 break;
-            case "IDAT":
-                json.data = Buffer.concat([(json.data ?? Buffer.from("")) as Buffer, chkData]);
+            case "IDAT": // Compressed image data chunk(s)
+                json.data.compressed = Buffer.concat([json.data.compressed, chkData]);
                 break;
-            case "IEND":
-                break;
-            default:
-                json.chunks[chkType] = Buffer.concat([json.chunks[chkType] ?? Buffer.from(""), chkData]);
+            case "IEND": // Image ending chunk
                 break;
         }
 
+        const ancillary = util.getBit(chkType.codePointAt(0)!, 5);
+        if (ancillary) try {
+            switch (chkType) {
+                case "bKGD": // Background color chunk
+                    json.chunks.bKGD = util.getBit(json.header.type, 0) ? chkData[0] : (util.getBit(json.header.type, 1) ?
+                            new Uint16Array([chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)]) :
+                            chkData.readUint16BE(0));
+                case "gAMA": // Gamma chunk
+                    json.chunks.gAMA = chkData.readUInt32BE(0) / 100000;
+                    break;
+                case "pHYs": // Physical image size chunk
+                    json.chunks.pHYs = {
+                        ppuX: chkData.readUInt32BE(0),
+                        ppuY: chkData.readUInt32BE(4),
+                        specifier: chkData[8] > 0
+                    }
+                    break;
+                case "sRGB": // sRGB intent chunk
+                    json.chunks.sRGB = chkData[0];
+                    break;
+                case "tEXt":
+                    json.chunks.tEXt ??= {};
+                    const nullIndex = chkData.indexOf(0);
+                    json.chunks.tEXt[chkData.subarray(0, nullIndex).toString("utf8")] = chkData.subarray(nullIndex + 1).toString("utf8");
+                    break;
+                case "tIME":
+                    json.chunks.tIME = `${[
+                        chkData.readUint16BE(0).toString(),
+                        chkData[2].toString().padStart(2, "0"),
+                        chkData[3].toString().padStart(2, "0")
+                    ].join("-")}T${[
+                        chkData[4].toString().padStart(2, "0"),
+                        chkData[5].toString().padStart(2, "0"),
+                        chkData[6].toString().padStart(2, "0")
+                    ].join(":")}+00:00`;
+                    break;
+                case "tRNS": // Transparent colors chunk
+                    json.chunks.tRNS = util.getBit(json.header.type, 0) ? chkData : (util.getBit(json.header.type, 1) ?
+                    new Uint16Array([chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)]) :
+                    chkData.readUint16BE(0));
+                default:
+                    json.chunks[chkType] = chkData;
+                    break;
+            }
+        } catch { continue; }
+
         if (checkCRC) {
-            const chkCRC = data.readInt32BE(i);
+            const chkCRC = data.readInt32BE(i + chkLength + 8);
             const calcCRC = crc!.read();
-            if (chkCRC != calcCRC) throw new Error(`CRC failed: expected ${chkCRC}, got ${calcCRC}`);
+            if (chkCRC != calcCRC && !ancillary) throw new Error(`${chkType}: CRC failed (expected 0x${chkCRC.toString(16)}, got 0x${calcCRC.toString(16)})`);
         }
+
+        i += chkLength;
     }
 
     const { width, height, depth, type, interlace } = json.header;
-    if (![1, 2, 4, 8, 16].includes(depth)) throw new SyntaxError(`Unrecognized bit depth ${depth}`);
 
-    json.data = zlib.inflateSync(json.data as Buffer, {
-        chunkSize: interlace ? 16384 : Math.max((((width * bppMap[type] * depth + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
+    json.data.filtered = zlib.inflateSync(json.data.compressed, {
+        chunkSize: interlace ? 16384 : Math.max((((width * util.bitsPerPixel(type, depth) + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
     });
-    if (!json.data || !json.data.length) throw new Error("Invalid PNG inflate response");
+    if (!json.data.filtered || !json.data.filtered.length) throw new Error("IDAT: Invalid inflate response");
 
-    if (!keepFilter) {
-        json.data = unfilter(json.data, json.header);
-        json.data = depth <= 8 ? Buffer.from(Array.from(json.data).flatMap(x => Array(8 / depth).fill(0)
-            .map((y, i) => (x >> (depth * i)) & (2 ** depth - 1)))) : new Uint16Array(json.data.buffer);
-    }
+    json.data.original = filter.reverse(json.data.filtered, json.header);
+    json.data.original = depth <= 8 ? Buffer.from(json.data.original.toJSON().data.flatMap(x =>
+        [0, 1, 2, 3, 4, 5, 6, 7].slice(0, 8 / depth).map(i => (x >> (depth * i)) & (2 ** depth - 1)))) : new Uint16Array(json.data.original.buffer);
 
-    return new _PNG(json);
+    return new PNG(json);
 }
-
-export default png;

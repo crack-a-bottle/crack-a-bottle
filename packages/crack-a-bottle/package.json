@@ -1,7 +1,7 @@
 {
   "name": "crack-a-bottle",
   "version": "1.0.0",
-  "description": "Let your body waddle. Decode a file and view its contents.",
+  "description": "Decode a file/stream and view its contents in JSON.",
   "main": "index.js",
   "module": "index.mjs",
   "types": "index.d.ts",
@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
-    "@types/node": "^18.14.2"
+    "@types/node": "^18.14.6"
   },
   "dependencies": {
     "@crackabottle/png": "workspace:^",
