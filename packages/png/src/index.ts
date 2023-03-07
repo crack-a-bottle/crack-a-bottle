@@ -212,8 +212,12 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
     if (!json.data.filtered || !json.data.filtered.length) throw new Error("IDAT: Invalid inflate response");
 
     json.data.original = filter.reverse(json.data.filtered, json.header);
-    json.data.original = depth <= 8 ? Buffer.from(json.data.original.toJSON().data.flatMap(x =>
-        [0, 1, 2, 3, 4, 5, 6, 7].slice(0, 8 / depth).map(i => (x >> (depth * i)) & (2 ** depth - 1)))) : new Uint16Array(json.data.original.buffer);
+
+    const multiplier = 8 / depth;
+    json.data.original = depth <= 8 ? json.data.original.reduce((a, x, i) => {
+        a.set([0, 1, 2, 3, 4, 5, 6, 7].slice(0, multiplier).reverse().map(y => (x >> (depth * y)) & (2 ** depth - 1)), i * multiplier);
+        return a;
+    }, Buffer.alloc(json.data.original.length * multiplier)) : new Uint16Array(json.data.original.buffer);
 
     return new PNG(json);
 }

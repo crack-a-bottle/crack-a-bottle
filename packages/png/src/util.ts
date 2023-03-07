@@ -5,7 +5,7 @@ export function getBit(num: number, index: number) {
 }
 
 export function bitsPerPixel(type: PNGType, depth: number) {
-    return depth * (1 + (getBit(type, 1) ? 2 : 0) + (getBit(type, 2) ? 1 : 0));
+    return depth * (1 + (getBit(type, 1) ? getBit(type, 0) ? 0 : 2 : 0) + (getBit(type, 2) ? 1 : 0));
 }
 
 export function checkArray(o: any) {
