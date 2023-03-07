@@ -1,7 +1,6 @@
 // I'm actually surprised at how this turned out
 import { PNGFilter, type PNGHeader } from ".";
 import { getPassLength, IMAGE_PASSES as passes } from "./adam7";
-import { EMPTY_BUFFER } from "./constants";
 import * as util from "./util";
 
 // Reverse the filters that were used on each scanline of the PNG image data.
@@ -27,6 +26,8 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
     for (const { byteWidth, imageHeight, offset } of images) {
         // The block of image data to scan from, starting from a specified offset, in case of Adam7
         const imageData = data.subarray(offset, offset + ((byteWidth + 1) * imageHeight));
+        // An empty buffer with a length of the image's byte width
+        const empty = Buffer.alloc(byteWidth);
 
         for (let y = 0; y < imageHeight; y++) {
             // The filter method used on this scanline.
@@ -65,7 +66,7 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
             // otherwise just compare byte-wise (Usually this means the filter method is NONE)
             const filterLength = depth >> 3 > 0 ? bpp : 1;
             // The previous unfiltered scanline, if y is more than zero
-            const lastLine = y > 0 ? scanlines[scanlines.length - 1] : EMPTY_BUFFER;
+            const lastLine = y > 0 ? scanlines[scanlines.length - 1] : empty;
 
             // The unfiltered scanline, initialized as an exact copy of the filtered scanline
             // Use Array#reduce to view unfiltered scanline as it is created

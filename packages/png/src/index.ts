@@ -14,11 +14,13 @@ export interface BasePNGStream {
 export type PNGChunks = {
     bKGD?: number | Uint16Array;
     gAMA?: number;
-    pHYs?: { ppuX: number, ppuY: number, specifier: boolean };
+    hIST?: Uint16Array;
+    pHYs?: { ppuX: number, ppuY: number, specifier: number };
     sRGB?: number;
     tEXt?: { [key: string]: string };
     tIME?: string;
     tRNS?: number | Uint16Array | Buffer;
+    zTXt?: { [key: string]: string };
     [key: string]: any;
 }
 
@@ -41,7 +43,6 @@ export type PNGHeader = {
     height: number;
     depth: number;
     type: PNGType;
-    methods: { compression: number; filter: number; };
     interlace: boolean;
 }
 
@@ -51,11 +52,13 @@ export type PNGObject = {
     chunks: {
         bKGD?: number | number[];
         gAMA?: number;
-        pHYs?: { ppuX: number, ppuY: number, specifier: boolean };
+        hIST?: number[];
+        pHYs?: { ppuX: number, ppuY: number, specifier: number };
         sRGB?: number;
         tEXt?: { [key: string]: string };
         tIME?: string;
         tRNS?: number | number[];
+        zTXt?: { [key: string]: string };
         [key: string]: any;
     }
     data: {
@@ -108,13 +111,13 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
     if (!data.subarray(0, 8).equals(SIGNATURE)) throw new SyntaxError("#: Signature not found at start of datastream");
 
     const json: BasePNGStream = {
-        header: { width: 0, height: 0, depth: 0, type: 0, methods: { compression: 0, filter: 0 }, interlace: false },
+        header: { width: 0, height: 0, depth: 0, type: 0, interlace: false },
         data: { original: EMPTY_BUFFER, filtered: EMPTY_BUFFER, compressed: EMPTY_BUFFER },
         chunks: {}
     }
     for (let i = 8; i < data.length; i += 12) {
         const chkLength = data.readUInt32BE(i);
-        const chkType = data.subarray(i + 4, i + 8).toString("utf8");
+        const chkType = data.subarray(i + 4, i + 8).toString("ascii");
         const chkData = data.subarray(i + 8, i + chkLength + 8);
 
         const crc = checkCRC ? new CRC() : null;
@@ -127,16 +130,12 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
             case "IHDR": // Image header chunk
                 if (![1, 2, 4, 8, 16].includes(chkData[8])) throw new SyntaxError(`IHDR: Unrecognized bit depth ${chkData[8]}`);
                 if (![0, 2, 3, 4, 6].includes(chkData[9])) throw new SyntaxError(`IHDR: Unsupported color type ${chkData[9]}`);
-                if (chkData[10] != 0) throw new SyntaxError(`IHDR: Unsupported compression method ${chkData[10]}`);
-                if (chkData[11] != 0) throw new SyntaxError(`IHDR: Unsupported filter method ${chkData[11]}`);
                 if (chkData[12] > 1) throw new SyntaxError(`IHDR: Unsupported interlace method ${chkData[12]}`);
 
                 json.header.width = chkData.readUInt32BE(0);
                 json.header.height = chkData.readUint32BE(4);
                 json.header.depth = chkData[8];
                 json.header.type = chkData[9];
-                json.header.methods.compression = chkData[10];
-                json.header.methods.filter = chkData[11];
                 json.header.interlace = chkData[12] > 0;
                 break;
             case "PLTE": // Color palette chunk (Required for type 3 only)
@@ -151,28 +150,37 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
 
         const ancillary = util.getBit(chkType.codePointAt(0)!, 5);
         if (ancillary) try {
+            const nullIndex = chkData.indexOf(0);
             switch (chkType) {
                 case "bKGD": // Background color chunk
                     json.chunks.bKGD = util.getBit(json.header.type, 0) ? chkData[0] : (util.getBit(json.header.type, 1) ?
-                            new Uint16Array([chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)]) :
+                            Uint16Array.of(chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)) :
                             chkData.readUint16BE(0));
+                    break;
                 case "gAMA": // Gamma chunk
                     json.chunks.gAMA = chkData.readUInt32BE(0) / 100000;
+                    break;
+                case "hIST": // Gamma chunk
+                    json.chunks.hIST = new Uint16Array(chkData.buffer);
                     break;
                 case "pHYs": // Physical image size chunk
                     json.chunks.pHYs = {
                         ppuX: chkData.readUInt32BE(0),
                         ppuY: chkData.readUInt32BE(4),
-                        specifier: chkData[8] > 0
+                        specifier: chkData[8]
                     }
+                    break;
+                case "sPLT":
+                    json.chunks.sPLT ??= {};
+                    json.chunks.sPLT[chkData.subarray(0, nullIndex).toString("latin1")] =
+                        chkData[nullIndex + 1] > 8 ? new Uint16Array(chkData.subarray(nullIndex + 2).buffer) : chkData;
                     break;
                 case "sRGB": // sRGB intent chunk
                     json.chunks.sRGB = chkData[0];
                     break;
                 case "tEXt":
                     json.chunks.tEXt ??= {};
-                    const nullIndex = chkData.indexOf(0);
-                    json.chunks.tEXt[chkData.subarray(0, nullIndex).toString("utf8")] = chkData.subarray(nullIndex + 1).toString("utf8");
+                    json.chunks.tEXt[chkData.subarray(0, nullIndex).toString("latin1")] = chkData.subarray(nullIndex + 1).toString("latin1");
                     break;
                 case "tIME":
                     json.chunks.tIME = `${[
@@ -187,8 +195,13 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
                     break;
                 case "tRNS": // Transparent colors chunk
                     json.chunks.tRNS = util.getBit(json.header.type, 0) ? chkData : (util.getBit(json.header.type, 1) ?
-                    new Uint16Array([chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)]) :
+                    Uint16Array.of(chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)) :
                     chkData.readUint16BE(0));
+                    break;
+                case "zTXt":
+                    json.chunks.zTXt ??= {};
+                    json.chunks.zTXt[chkData.subarray(0, nullIndex).toString("latin1")] = zlib.inflateSync(chkData.subarray(nullIndex + 2)).toString("latin1");
+                    break;
                 default:
                     json.chunks[chkType] = chkData;
                     break;
