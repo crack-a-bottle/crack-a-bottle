@@ -9,5 +9,5 @@ export const IMAGE_PASSES = [
 ]
 
 export function getPassLength(length: number, pass: number[]) {
-    return (length - (length % 8)) / 8 * pass.length + pass.filter(x => x < (length % 8)).length;
+    return Math.floor(length / 8) * pass.length + pass.filter(x => x < length % 8).length;
 }

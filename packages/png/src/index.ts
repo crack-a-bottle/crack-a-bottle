@@ -7,7 +7,7 @@ import * as util from "./util";
 export interface BasePNGStream {
     header: PNGHeader;
     palette?: Buffer;
-    data: PNGData;
+    data: Buffer | Uint16Array;
     chunks: PNGChunks;
 }
 
@@ -22,12 +22,6 @@ export type PNGChunks = {
     tRNS?: number | Uint16Array | Buffer;
     zTXt?: { [key: string]: string };
     [key: string]: any;
-}
-
-export type PNGData = {
-    original: Buffer | Uint16Array;
-    filtered: Buffer;
-    compressed: Buffer;
 }
 
 export enum PNGFilter { // A is the left byte, B is the upper byte, C is the upper left byte
@@ -61,11 +55,7 @@ export type PNGObject = {
         zTXt?: { [key: string]: string };
         [key: string]: any;
     }
-    data: {
-        compressed: number[];
-        filtered: number[];
-        original: number[];
-    }
+    data: number[];
 }
 
 export interface PNGStream extends BasePNGStream {
@@ -83,7 +73,7 @@ export enum PNGType {
 class PNG implements PNGStream {
     public header: PNGHeader;
     public palette?: Buffer;
-    public data: PNGData;
+    public data: Buffer | Uint16Array;
     public chunks: PNGChunks;
 
     public constructor(data: BasePNGStream) {
@@ -98,11 +88,7 @@ class PNG implements PNGStream {
             header: this.header,
             palette: this.palette ? this.palette.toJSON().data : undefined,
             chunks: util.map((x, y) => [y, util.checkArray(x)], this.chunks),
-            data: {
-                compressed: util.checkArray(this.data.compressed),
-                filtered: util.checkArray(this.data.filtered),
-                original: util.checkArray(this.data.original),
-            }
+            data: util.checkArray(this.data)
         }
     }
 }
@@ -112,7 +98,7 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
 
     const json: BasePNGStream = {
         header: { width: 0, height: 0, depth: 0, type: 0, interlace: false },
-        data: { original: EMPTY_BUFFER, filtered: EMPTY_BUFFER, compressed: EMPTY_BUFFER },
+        data: EMPTY_BUFFER,
         chunks: {}
     }
     for (let i = 8; i < data.length; i += 12) {
@@ -142,7 +128,7 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
                 json.palette = chkData;
                 break;
             case "IDAT": // Compressed image data chunk(s)
-                json.data.compressed = Buffer.concat([json.data.compressed, chkData]);
+                json.data = Buffer.concat([json.data as Buffer, chkData]);
                 break;
             case "IEND": // Image ending chunk
                 break;
@@ -219,18 +205,18 @@ export function png(data: Buffer, checkCRC: boolean = false): PNGStream {
 
     const { width, height, depth, type, interlace } = json.header;
 
-    json.data.filtered = zlib.inflateSync(json.data.compressed, {
+    json.data = zlib.inflateSync(json.data, {
         chunkSize: interlace ? 16384 : Math.max((((width * util.bitsPerPixel(type, depth) + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
     });
-    if (!json.data.filtered || !json.data.filtered.length) throw new Error("IDAT: Invalid inflate response");
-
-    json.data.original = filter.reverse(json.data.filtered, json.header);
+    if (!json.data || !json.data.length) throw new Error("IDAT: Invalid inflate response");
+    else json.data = filter.reverse(json.data, json.header);
 
     const multiplier = 8 / depth;
-    json.data.original = depth <= 8 ? json.data.original.reduce((a, x, i) => {
-        a.set([0, 1, 2, 3, 4, 5, 6, 7].slice(0, multiplier).reverse().map(y => (x >> (depth * y)) & (2 ** depth - 1)), i * multiplier);
-        return a;
-    }, Buffer.alloc(json.data.original.length * multiplier)) : new Uint16Array(json.data.original.buffer);
+    json.data = depth <= 8 ? json.data.reduce((a, x, i) => Buffer.concat([
+        a.subarray(0, i * multiplier),
+        Buffer.from([7, 6, 5, 4, 3, 2, 1, 0].slice(8 - multiplier).map(y => depth * y)).map(y => (x >> y) & (2 ** depth - 1)),
+        a.subarray((i + 1) * multiplier)
+    ]), Buffer.alloc(json.data.length * multiplier)) : new Uint16Array(json.data.buffer);
 
     return new PNG(json);
 }

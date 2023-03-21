@@ -25,7 +25,7 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
 
     for (const { byteWidth, imageHeight, offset } of images) {
         // The block of image data to scan from, starting from a specified offset, in case of Adam7
-        const imageData = data.subarray(offset, offset + ((byteWidth + 1) * imageHeight));
+        const imageData = data.subarray(offset, offset + (byteWidth + 1) * imageHeight);
         // An empty buffer with a length of the image's byte width
         const empty = Buffer.alloc(byteWidth);
 
@@ -68,20 +68,21 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
             // The previous unfiltered scanline, if y is more than zero
             const lastLine = y > 0 ? scanlines[scanlines.length - 1] : empty;
 
-            // The unfiltered scanline, initialized as an exact copy of the filtered scanline
-            // Use Array#reduce to view unfiltered scanline as it is created
-            const scanline = imageData.subarray(y * (byteWidth + 1) + 1, (y + 1) * (byteWidth + 1)).reduce((line, byte, x) => {
-                line.set([unfilterByte(
-                    byte,
+            // Use TypedArray#reduce to view unfiltered scanline as it is created
+            // Push to scanlines array when finished
+            scanlines.push(imageData.subarray(y * (byteWidth + 1) + 1, (y + 1) * (byteWidth + 1)).reduce((line, char, x) => Buffer.concat([
+                line.subarray(0, x),
+                Buffer.of(unfilterByte(
+                    char,
                     x >= filterLength ? line[x - filterLength] : 0,
                     y > 0 ? lastLine[x] : 0,
                     x >= filterLength && y > 0 ? lastLine[x - filterLength] : 0
-                )], x);
-                return line;
-            }, Buffer.alloc(byteWidth));
-            scanlines.push(scanline);
+                )),
+                line.subarray(x + 1)
+            ]), empty));
         }
     }
 
+    // Return unfiltered PNG data
     return Buffer.concat(scanlines);
 }

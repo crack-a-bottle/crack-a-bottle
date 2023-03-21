@@ -32,9 +32,9 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
-    "@types/node": "^18.14.6",
-    "esbuild-plugin-version-injector": "^1.0.3",
-    "tsup": "^6.6.3",
-    "typescript": "^4.9.5"
+    "@types/node": "^18.15.5",
+    "esbuild-plugin-version-injector": "^1.1.0",
+    "tsup": "^6.7.0",
+    "typescript": "^5.0.2"
   }
 }

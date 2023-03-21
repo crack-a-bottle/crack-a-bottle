@@ -21,10 +21,11 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
-    "@types/node": "^18.14.6"
+    "@types/node": "^18.15.5"
   },
   "dependencies": {
-    "@crackabottle/png": "workspace:^",
+    "@crackabottle/png": "workspace:*",
+    "@crackabottle/qoi": "workspace:*",
     "arg": "^5.0.2",
     "chalk": "^5.2.0"
   }
