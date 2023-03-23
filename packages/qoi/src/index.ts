@@ -1,28 +1,27 @@
-import { EMPTY_ARRAY, END_SIGNATURE, SIGNATURE } from "./constants";
-import * as util from "./util";
-
-export interface BaseQOIStream {
-    width: number;
-    height: number;
-    channels: QOIChannels;
-    colorspace: number;
-    data: Uint32Array;
-}
+import * as assert from "assert";
+import { END_SIGNATURE, SIGNATURE } from "./constants";
 
 export enum QOIChannels {
     RGB = 3,
     RGBA = 4
 }
 
-export type QOIObject = {
+export interface QOIStream {
     width: number;
     height: number;
     channels: QOIChannels;
     colorspace: number;
-    data: number[];
+    data: QOIPixel[][];
 }
 
-export enum QOIPixel {
+export type QOIPixel = {
+    r: number;
+    g: number;
+    b: number;
+    a?: number;
+}
+
+export enum QOIPixelType {
     INDEX = 0,
     DIFF = 64,
     LUMA = 128,
@@ -31,97 +30,85 @@ export enum QOIPixel {
     RGBA = 255
 }
 
-export interface QOIStream extends BaseQOIStream {
-    toJSON(): QOIObject;
-}
-
-class QOI implements QOIStream {
-    public width: number;
-    public height: number;
-    public channels: QOIChannels;
-    public colorspace: number;
-    public data: Uint32Array;
-
-    public constructor(data: BaseQOIStream) {
-        this.width = data.width;
-        this.height = data.height;
-        this.channels = data.channels;
-        this.colorspace = data.colorspace;
-        this.data = data.data;
-    }
-
-    public toJSON(): QOIObject {
-        return {
-            width: this.width,
-            height: this.height,
-            channels: this.channels,
-            colorspace: this.colorspace,
-            data: Array.from(this.data)
-        }
-    }
-}
-
 export function qoi(data: Buffer): QOIStream {
     if (!data.subarray(0, 4).equals(SIGNATURE)) throw new SyntaxError("Signature not found at start of datastream");
-    const json: BaseQOIStream = {
-        width: data.readUInt32BE(4),
-        height: data.readUInt32BE(8),
-        channels: data[12],
-        colorspace: data[13],
-        data: EMPTY_ARRAY
+
+    const width = data.readUInt32BE(4);
+    assert.ok(width > 0, "Image width is less than one");
+    const height = data.readUInt32BE(8);
+    assert.ok(height > 0, "Image height is less than one");
+    const channels = data[12];
+    assert.ok(channels >= 3 && channels <= 4, "Unsupported channel amount " + channels);
+    const colorspace = data[12];
+    assert.ok(channels >= 0 && channels <= 1, "Unsupported colorspace " + colorspace);
+
+    const json: QOIStream = {
+        width,
+        height,
+        channels,
+        colorspace,
+        data: Array.from({ length: height }, (): QOIPixel[] => Array(width))
     }
 
-    const rawData = data.subarray(14, -8);
-    const finalData = new Uint32Array(json.width * json.height);
-    const indexes: Record<number, number> = {};
-    for (let i = 0, p = 0, c = 255; i < rawData.length; i++) {
-        if (rawData[i] > 253) switch (rawData[i]) {
-            case QOIPixel.RGB: {
-                c = util.rgbaToInt(rawData[++i], rawData[++i], rawData[++i], c & 255);
-                indexes[util.hashIndex(c)] = c;
-                finalData[p++] = c;
-                continue;
-            } case QOIPixel.RGBA: {
-                c = util.rgbaToInt(rawData[++i], rawData[++i], rawData[++i], rawData[++i]);
-                indexes[util.hashIndex(c)] = c;
-                finalData[p++] = c;
-                continue;
+    const colors = Array.from({ length: 64 }, (): QOIPixel => ({ r: 0, g: 0, b: 0, a: 0 }));
+
+    let c: QOIPixel = { r: 0, g: 0, b: 0 };
+    if (channels == QOIChannels.RGBA) c.a = 255;
+    let o = 14;
+    let l = 0;
+    for (const y of json.data.values()) {
+        for (const x of y.keys()) {
+            if (l > 0) l--;
+            else if (o < data.length - 8) {
+                const { r, g, b } = c;
+                const px = data[o] & 63;
+                const pxType = data[o] <= 253 ? data[o] : data[o] & 192;
+                switch (pxType) {
+                    case QOIPixelType.RGB:
+                        c.r = data[++o];
+                        c.g = data[++o];
+                        c.b = data[++o];
+                        break;
+                    case QOIPixelType.RGBA:
+                        c.r = data[++o];
+                        c.g = data[++o];
+                        c.b = data[++o];
+                        if (channels == QOIChannels.RGBA) c.a = data[++o];
+                        else o++;
+                        break;
+                    case QOIPixelType.INDEX:
+                        const idx = colors[px];
+                        c.r = idx.r;
+                        c.g = idx.g;
+                        c.b = idx.b;
+                        if (channels == QOIChannels.RGBA) c.a = idx.a;
+                        break;
+                    case QOIPixelType.DIFF:
+                        c.r = (r + (px & 3) - 2) & 255;
+                        c.g = (g + ((px >> 2) & 3) - 2) & 255;
+                        c.b = (b + ((px >> 4) & 3) - 2) & 255;
+                        break;
+                    case QOIPixelType.LUMA:
+                        const px2 = data[++o];
+                        c.r = (r + px + (px2 & 15) - 40) & 255;
+                        c.g = (g + px - 32) & 255;
+                        c.b = (b + px + ((px2 >> 4) & 15) - 40) & 255;
+                        break;
+                    case QOIPixelType.RUN:
+                        l = px;
+                        break;
+                }
+
+                if (pxType != QOIPixelType.RUN && pxType != QOIPixelType.INDEX)
+                    colors.splice((c.r * 3 + c.g * 5 + c.b * 7 + (c.a ?? 255) * 11) % 64, 1, c);
+
+                o++;
             }
-        } else switch (rawData[i] & 192) {
-            case QOIPixel.INDEX: {
-                c = indexes[rawData[i] & 63];
-                finalData[p++] = c;
-                continue;
-            } case QOIPixel.DIFF: { // oh boy
-                const rgba = util.intToRgba(c);
-                c = util.rgbaToInt(
-                    rgba[0] + ((((rawData[i] >> 4) & 3) - 2) & 255),
-                    rgba[1] + ((((rawData[i] >> 2) & 3) - 2) & 255),
-                    rgba[2] + (((rawData[i] & 3) - 2) & 255),
-                    rgba[3]);
-                indexes[util.hashIndex(c)] = c;
-                finalData[p++] = c;
-                continue;
-            } case QOIPixel.LUMA: { // seriously screw this
-                const diffG = (rawData[i++] & 63) - 32;
-                const rgba = util.intToRgba(c);
-                c = util.rgbaToInt(
-                    rgba[0] + (diffG - 8 + ((rawData[i] >> 4) & 15)) & 255,
-                    (rgba[1] + diffG) & 255,
-                    (rgba[2] + (diffG - 8 + (rawData[i] & 15))) & 255,
-                    rgba[3]);
-                indexes[util.hashIndex(c)] = c;
-                finalData[p++] = c;
-                continue;
-            } case QOIPixel.RUN: {
-                for (let run = (rawData[i] & 63) + 1; run > 0; run--) finalData[p++] = c;
-                continue;
-            }
+
+            y.splice(x, 1, c);
         }
     }
 
     if (!data.subarray(-8).equals(END_SIGNATURE)) throw new SyntaxError("Signature not found at end of datastream");
-
-    json.data = finalData;
-    return new QOI(json);
+    return json;
 }

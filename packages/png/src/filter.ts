@@ -8,7 +8,7 @@ import * as util from "./util";
 // To properly identify scanlines, the function needs to take the PNG datastream header as well.
 export function reverse(data: Buffer, { width, height, type, depth, interlace }: PNGHeader) {
     const scanlines: Buffer[] = [];
-    const bpp = util.bitsPerPixel(type, depth) / 8;
+    const bpp = util.bitsPerPixel(type, 1);
     const images: { byteWidth: number; imageHeight: number; offset: number; }[] = [];
 
     if (interlace) {
@@ -52,7 +52,7 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
                         const paethA = Math.abs(b - c);         // P - A = A + B - C - A = B - C
                         const paethB = Math.abs(a - c);         // P - B = A + B - C - B = A - C
                         const paethC = Math.abs(a + b - 2 * c); // P - C = A + B - C - C = A + B - 2C
-        
+
                         // Check if P - A is less than/equal to P - B AND less than/equal to P - C, add A, if not,
                         // check if P - B is less than/equal to P - C, add B, otherwise add C
                         return x + ((paethA <= paethB && paethA <= paethC) ? a : ((paethB <= paethC) ? b : c));
@@ -62,7 +62,7 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
                     throw new RangeError(`IDAT: Unrecognized filter type ${filter}`);
             }
 
-            // If depth is less than eight bits per pixel, then compare pixel-wise, byte-wise,
+            // If depth is eight or more bits per channel, then compare channel-wise, byte-wise,
             // otherwise just compare byte-wise (Usually this means the filter method is NONE)
             const filterLength = depth >> 3 > 0 ? bpp : 1;
             // The previous unfiltered scanline, if y is more than zero
