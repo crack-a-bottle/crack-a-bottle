@@ -11,7 +11,7 @@ export interface QOIStream {
     height: number;
     channels: QOIChannels;
     colorspace: number;
-    data: QOIPixel[][];
+    data: Buffer;
 }
 
 export type QOIPixel = {
@@ -31,7 +31,8 @@ export enum QOIPixelType {
 }
 
 export function qoi(data: Buffer): QOIStream {
-    if (!data.subarray(0, 4).equals(SIGNATURE)) throw new SyntaxError("Signature not found at start of datastream");
+    assert.ok(data.subarray(0, 4).equals(SIGNATURE), "Start signature not found");
+    assert.ok(data.subarray(-8).equals(END_SIGNATURE), "End signature not found");
 
     const width = data.readUInt32BE(4);
     assert.ok(width > 0, "Image width is less than one");
@@ -47,68 +48,59 @@ export function qoi(data: Buffer): QOIStream {
         height,
         channels,
         colorspace,
-        data: Array.from({ length: height }, (): QOIPixel[] => Array(width))
+        data: Buffer.alloc(width * height * channels)
     }
 
-    const colors = Array.from({ length: 64 }, (): QOIPixel => ({ r: 0, g: 0, b: 0, a: 0 }));
+    const colors = Array.from({ length: 64 }, (): number[] => ([0, 0, 0, 0]));
 
-    let c: QOIPixel = { r: 0, g: 0, b: 0 };
-    if (channels == QOIChannels.RGBA) c.a = 255;
+    let c = [0, 0, 0, 255].slice(0, channels);
     let o = 14;
     let l = 0;
-    for (const y of json.data.values()) {
-        for (const x of y.keys()) {
-            if (l > 0) l--;
-            else if (o < data.length - 8) {
-                const { r, g, b } = c;
-                const px = data[o] & 63;
-                const pxType = data[o] <= 253 ? data[o] : data[o] & 192;
-                switch (pxType) {
-                    case QOIPixelType.RGB:
-                        c.r = data[++o];
-                        c.g = data[++o];
-                        c.b = data[++o];
-                        break;
-                    case QOIPixelType.RGBA:
-                        c.r = data[++o];
-                        c.g = data[++o];
-                        c.b = data[++o];
-                        if (channels == QOIChannels.RGBA) c.a = data[++o];
-                        else o++;
-                        break;
-                    case QOIPixelType.INDEX:
-                        const idx = colors[px];
-                        c.r = idx.r;
-                        c.g = idx.g;
-                        c.b = idx.b;
-                        if (channels == QOIChannels.RGBA) c.a = idx.a;
-                        break;
-                    case QOIPixelType.DIFF:
-                        c.r = (r + (px & 3) - 2) & 255;
-                        c.g = (g + ((px >> 2) & 3) - 2) & 255;
-                        c.b = (b + ((px >> 4) & 3) - 2) & 255;
-                        break;
-                    case QOIPixelType.LUMA:
-                        const px2 = data[++o];
-                        c.r = (r + px + (px2 & 15) - 40) & 255;
-                        c.g = (g + px - 32) & 255;
-                        c.b = (b + px + ((px2 >> 4) & 15) - 40) & 255;
-                        break;
-                    case QOIPixelType.RUN:
-                        l = px;
-                        break;
-                }
-
-                if (pxType != QOIPixelType.RUN && pxType != QOIPixelType.INDEX)
-                    colors.splice((c.r * 3 + c.g * 5 + c.b * 7 + (c.a ?? 255) * 11) % 64, 1, c);
-
-                o++;
+    for (let i = 0; i < json.data.length; i += channels) {
+        if (l > 0) l--;
+        else if (o < data.length - 8) {
+            const [ r, g, b ] = c;
+            const px = data[o] & 63;
+            const pxType = data[o] <= 253 ? data[o] : data[o] & 192;
+            switch (pxType) {
+                case QOIPixelType.RGB:
+                    c[0] = data[++o];
+                    c[1] = data[++o];
+                    c[2] = data[++o];
+                    break;
+                case QOIPixelType.RGBA:
+                    c[0] = data[++o];
+                    c[1] = data[++o];
+                    c[2] = data[++o];
+                    if (channels == QOIChannels.RGBA) c[3] = data[++o];
+                    break;
+                case QOIPixelType.INDEX:
+                    c = colors[px].slice(0, channels);
+                    break;
+                case QOIPixelType.DIFF:
+                    c[0] = (r + (px & 3) - 2) & 255;
+                    c[1] = (g + ((px >> 2) & 3) - 2) & 255;
+                    c[2] = (b + ((px >> 4) & 3) - 2) & 255;
+                    break;
+                case QOIPixelType.LUMA:
+                    const px2 = data[++o];
+                    c[0] = (r + px + (px2 & 15) - 40) & 255;
+                    c[1] = (g + px - 32) & 255;
+                    c[2] = (b + px + ((px2 >> 4) & 15) - 40) & 255;
+                    break;
+                case QOIPixelType.RUN:
+                    l = px;
+                    break;
             }
 
-            y.splice(x, 1, c);
+            if (pxType != QOIPixelType.RUN && pxType != QOIPixelType.INDEX)
+                colors.splice((c[0] * 3 + c[1] * 5 + c[2] * 7 + (c[3] ?? 255) * 11) % 64, 1, c);
+
+            o++;
         }
+
+        json.data.set(c, i);
     }
 
-    if (!data.subarray(-8).equals(END_SIGNATURE)) throw new SyntaxError("Signature not found at end of datastream");
     return json;
 }

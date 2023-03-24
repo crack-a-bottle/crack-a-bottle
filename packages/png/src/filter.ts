@@ -1,6 +1,6 @@
 // I'm actually surprised at how this turned out
 import { PNGFilter, type PNGHeader } from ".";
-import { getPassLength, IMAGE_PASSES as passes } from "./adam7";
+import * as adam7 from "./adam7";
 import * as util from "./util";
 
 // Reverse the filters that were used on each scanline of the PNG image data.
@@ -8,24 +8,15 @@ import * as util from "./util";
 // To properly identify scanlines, the function needs to take the PNG datastream header as well.
 export function reverse(data: Buffer, { width, height, type, depth, interlace }: PNGHeader) {
     const scanlines: Buffer[] = [];
-    const bpp = util.bitsPerPixel(type, 1);
-    const images: { byteWidth: number; imageHeight: number; offset: number; }[] = [];
+    const bpp = util.bitsPerPixel(type, depth / 8);
+    const images: { byteWidth: number; imageHeight: number; }[] = interlace ?
+        adam7.passes(width, height).map(x => ({ byteWidth: Math.ceil(x.width * bpp), imageHeight: x.height })) :
+        [{ byteWidth: Math.ceil(width * bpp), imageHeight: height }];
 
-    if (interlace) {
-        for (const [i, pass] of passes.entries()) {
-            const byteWidth = Math.ceil(getPassLength(width, pass.x) * bpp);
-            const imageHeight = getPassLength(height, pass.y);
-
-            if (byteWidth > 0 && imageHeight > 0) {
-                const prevImage = images[i - 1] ?? { byteWidth: 0, imageHeight: 0, offset: 0 };
-                images.push({ byteWidth, imageHeight, offset: (prevImage.byteWidth + 1) * prevImage.imageHeight });
-            }
-        }
-    } else images.push({ byteWidth: Math.ceil(width * bpp), imageHeight: height, offset: 0 });
-
-    for (const { byteWidth, imageHeight, offset } of images) {
+    let i = 0;
+    for (const { byteWidth, imageHeight } of images) {
         // The block of image data to scan from, starting from a specified offset, in case of Adam7
-        const imageData = data.subarray(offset, offset + (byteWidth + 1) * imageHeight);
+        const imageData = data.subarray(i, i += (byteWidth + 1) * imageHeight);
         // An empty buffer with a length of the image's byte width
         const empty = Buffer.alloc(byteWidth);
 
@@ -64,21 +55,21 @@ export function reverse(data: Buffer, { width, height, type, depth, interlace }:
 
             // If depth is eight or more bits per channel, then compare channel-wise, byte-wise,
             // otherwise just compare byte-wise (Usually this means the filter method is NONE)
-            const filterLength = depth >> 3 > 0 ? bpp : 1;
+            const distance = depth >> 3 > 0 ? bpp : 1;
             // The previous unfiltered scanline, if y is more than zero
-            const lastLine = y > 0 ? scanlines[scanlines.length - 1] : empty;
+            const previous = y > 0 ? scanlines[scanlines.length - 1] : empty;
 
             // Use TypedArray#reduce to view unfiltered scanline as it is created
             // Push to scanlines array when finished
-            scanlines.push(imageData.subarray(y * (byteWidth + 1) + 1, (y + 1) * (byteWidth + 1)).reduce((line, char, x) => Buffer.concat([
-                line.subarray(0, x),
+            scanlines.push(imageData.subarray(y * (byteWidth + 1) + 1, (y + 1) * (byteWidth + 1)).reduce((l, c, x) => Buffer.concat([
+                l.subarray(0, x),
                 Buffer.of(unfilterByte(
-                    char,
-                    x >= filterLength ? line[x - filterLength] : 0,
-                    y > 0 ? lastLine[x] : 0,
-                    x >= filterLength && y > 0 ? lastLine[x - filterLength] : 0
+                    c,
+                    x >= distance ? l[x - distance] : 0,
+                    y > 0 ? previous[x] : 0,
+                    x >= distance && y > 0 ? previous[x - distance] : 0
                 )),
-                line.subarray(x + 1)
+                l.subarray(x + 1)
             ]), empty));
         }
     }

@@ -1,5 +1,6 @@
 import * as assert from "assert";
 import * as zlib from "zlib";
+import * as adam7 from "./adam7";
 import { EMPTY_BUFFER, SIGNATURE } from "./constants";
 import * as crc from "./crc";
 import * as filter from "./filter";
@@ -155,7 +156,7 @@ export function png(data: Buffer, check: boolean = true): PNGStream {
 
         if (check) {
             try {
-                assert.ok(data.readInt32BE(i + chkLength + 8) == crc.check(data.subarray(i + 4, i + chkLength + 8)),
+                assert.strictEqual(crc.check(data.subarray(i + 4, i + chkLength + 8)), data.readUint32BE(i + chkLength + 8),
                     `${chkType}: Cyclic redundancy check failed`);
             } catch (err) {
                 if (!ancillary) throw err;
@@ -174,23 +175,28 @@ export function png(data: Buffer, check: boolean = true): PNGStream {
     else imageData = filter.reverse(imageData, json.header);
 
     const multiplier = 8 / depth;
-    json.data = util.groupArray(
-        util.groupArray((depth <= 8 ? imageData.reduce((a: number[], x: number, i: number) => [
+    const bitmap = util.groupArray(
+        (depth <= 8 ? imageData.reduce((a: number[], x: number, i: number) => [
             ...a.slice(0, i * multiplier),
             ...[7, 6, 5, 4, 3, 2, 1, 0].slice(8 - multiplier).map(y => depth * y).map(y => (x >> y) & (2 ** depth - 1)),
             ...a.slice((i + 1) * multiplier)
-        ], Array(imageData.length * multiplier)) : Array.from(new Uint16Array(imageData.buffer))), util.bitsPerPixel(type, 1))
-            .map(x => {
-                switch (type) {
-                    case PNGType.GRAYSCALE: return { r: x[0], g: x[0], b: x[0] };
-                    case PNGType.TRUECOLOR: return { r: x[0], g: x[1], b: x[2] };
-                    case PNGType.INDEX_COLOR: return x[0];
-                    case PNGType.GRAYSCALE_ALPHA: return { r: x[0], g: x[0], b: x[0], a: x[1] };
-                    case PNGType.TRUECOLOR_ALPHA: return { r: x[0], g: x[1], b: x[2], a: x[3] };
-                }
-            }),
-        width
-    );
+        ], Array(imageData.length * multiplier)) : util.groupArray(Array.from(imageData), 2).map(x => (x[0] << 8) | x[1])),
+        util.bitsPerPixel(type, 1)
+    ).map((x): PNGPixel | number => {
+        switch (type) {
+            case PNGType.GRAYSCALE: return { r: x[0], g: x[0], b: x[0] };
+            case PNGType.TRUECOLOR: return { r: x[0], g: x[1], b: x[2] };
+            case PNGType.INDEX_COLOR: return x[0];
+            case PNGType.GRAYSCALE_ALPHA: return { r: x[0], g: x[0], b: x[0], a: x[1] };
+            case PNGType.TRUECOLOR_ALPHA: return { r: x[0], g: x[1], b: x[2], a: x[3] };
+        }
+    });
+
+    if (interlace) {
+        const coords = adam7.interlace(width, height);
+        json.data = util.groupArray(Array.from({ length: width * height }, (_, x) =>
+            bitmap[coords.findIndex(y => y[0] == (x % width) && y[1] == Math.floor(x / width))] ?? {}), width);
+    } else json.data = util.groupArray(bitmap, width);
 
     return json;
 }
