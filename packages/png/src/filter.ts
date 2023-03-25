@@ -1,4 +1,5 @@
 // I'm actually surprised at how this turned out
+import * as assert from "assert";
 import { PNGFilter } from ".";
 import * as adam7 from "./adam7";
 
@@ -26,6 +27,8 @@ export function reverse(data: Buffer, { width, height, channels, depth, interlac
         for (let y = 0; y < imageHeight; y++) {
             // The scanline to reverse the filter (at index 0) on.
             const scanline = imageData.subarray(y * byteWidth, (y + 1) * byteWidth);
+            // Make sure the filter is valid
+            assert.ok(scanline[0] < 5, "IDAT: Unrecognized filter type " + scanline[0]);
             // Get the filter used on the scanline and determine what to do
             switch (scanline[0]) {
                 case PNGFilter.NONE:    // Least complex filter, leave byte (X) as is
@@ -58,8 +61,6 @@ export function reverse(data: Buffer, { width, height, channels, depth, interlac
                         }
                     }
                     break;
-                default:
-                    throw new RangeError(`IDAT: Unrecognized filter type ${scanline[0]}`);
             }
 
             // The sample distance, in bytes

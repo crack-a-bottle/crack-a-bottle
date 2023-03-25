@@ -48,9 +48,9 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
 
         switch (cType) {
             case "IHDR": { // Image header chunk
-                const width = chunk.readUInt32BE(4);
+                const width = chunk.readUInt32BE(0);
                 assert.ok(width > 0, "IHDR: Image width cannot be less than one");
-                const height = chunk.readUInt32BE(8);
+                const height = chunk.readUInt32BE(4);
                 assert.ok(height > 0, "IHDR: Image height cannot be less than one");
                 const depth = chunk[8];
                 assert.ok([1, 2, 4, 8, 16].includes(depth), "IHDR: Invalid bit depth " + depth);
