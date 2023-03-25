@@ -14,6 +14,7 @@
   },
   "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
   "devDependencies": {
+    "@types/node": "^18.15.9",
     "tsup": "^6.7.0",
     "turbo": "^1.8.5",
     "typescript": "^5.0.2"
