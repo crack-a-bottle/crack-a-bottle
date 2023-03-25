@@ -5,6 +5,7 @@ import * as crc from "./crc";
 import * as filter from "./filter";
 import * as util from "./util";
 
+export const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130);
 export const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10);
 
 export interface PNG {
@@ -33,6 +34,7 @@ export enum PNGType {
 
 export function png(data: Buffer, checkRedundancy: boolean = true) {
     assert.deepStrictEqual(SIGNATURE, data.subarray(0, 8), "Start signature not found");
+    assert.deepStrictEqual(END_SIGNATURE, data.subarray(-12), "End signature not found");
 
     const json: PNG = { width: 0, height: 0, type: 0, palette: undefined, data: [] };
     const info = { depth: 0, interlace: false, channels: 0 };
@@ -48,6 +50,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
 
         switch (cType) {
             case "IHDR": { // Image header chunk
+                assert.strictEqual(i, 8, "IHDR: Header chunk cannot be after another chunk");
                 const width = chunk.readUInt32BE(0);
                 assert.ok(width > 0, "IHDR: Image width cannot be less than one");
                 const height = chunk.readUInt32BE(4);
