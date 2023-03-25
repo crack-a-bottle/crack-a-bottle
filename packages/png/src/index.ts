@@ -70,7 +70,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 info.depth = depth;
                 info.interlace = !!interlace;
 
-                json.data = util.copyFill(height, Array(width * channels));
+                json.data = util.fill(height, Array(width * channels));
                 break;
             }
             case "PLTE": {// Color palette chunk (Required for type 3 only)

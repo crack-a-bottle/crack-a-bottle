@@ -1,9 +1,5 @@
-export function copyFill<T>(length: number, value: T) {
-    return Array.from({ length }, () => Array.isArray(value) ? [ ...value ] : { ...value });
-}
-
 export function fill<T>(length: number, value: T) {
-    return Array.from({ length }, () => value);
+    return Array(length).fill(null).map(() => value);
 }
 
 export function getBit(num: number, index: number = 0) {
@@ -19,5 +15,5 @@ export function groupArray<T>(array: T[], length: number) {
 }
 
 export function mapFill<T>(length: number, cb: (index: number) => T) {
-    return Array.from({ length }, (_, i) => cb(i));
+    return Array(length).fill(null).map((_, i) => cb(i));
 }
