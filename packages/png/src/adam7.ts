@@ -1,3 +1,5 @@
+import * as util from "./util";
+
 // Adam7 interlace algorithm (Implementing this was torturous)
 const pattern = [
     { x: [0], y: [0] },
@@ -12,8 +14,8 @@ const pattern = [
 // Get the non-interlaced coordinates of each pixel in the image, ordered by interlace position.
 export function coords(width: number, height: number) {
     return pattern.flatMap(({ x, y }) => {
-        const rows = Array.from({ length: Math.ceil(width / 8) }, (_, i) => x.map(v => v + i * 8).filter(v => v < width)).flat();
-        const columns = Array.from({ length: Math.ceil(height / 8) }, (_, i) => y.map(v => v + i * 8).filter(v => v < height)).flat();
+        const rows = util.fill(Math.ceil(width / 8), i => x.map(v => v + i * 8).filter(v => v < width)).flat();
+        const columns = util.fill(Math.ceil(height / 8), i => y.map(v => v + i * 8).filter(v => v < height)).flat();
         return columns.flatMap(c => rows.map(r => [r, c]));
     }, []);
 }

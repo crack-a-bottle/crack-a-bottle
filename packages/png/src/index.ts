@@ -95,11 +95,11 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 else imageData = filter.reverse(imageData, { width, height, depth, channels, interlace });
 
                 const bitmap = depth <= 8 ?
-                    imageData.toJSON().data.flatMap(x => util.mapFill(depth / 8, y => (x >> depth * y) % 2 ** depth).reverse()) :
+                    imageData.toJSON().data.flatMap(x => util.fill(depth / 8, y => (x >> depth * y) % 2 ** depth).reverse()) :
                     imageData.toJSON().data.map((x, j) => j % 2 == 0 ? ((x << 8) | imageData[j + 1]) : null).filter((x): x is number => x != null);
                 if (interlace) {
                     const coords = adam7.coords(width, height).map(x => [x[0] * channels, x[1]]);
-                    json.data = util.groupArray(util.mapFill(byteWidth * height, x => {
+                    json.data = util.groupArray(util.fill(byteWidth * height, x => {
                         const j = coords.findIndex(y => y[0] == x % byteWidth && y[1] == Math.floor(x / byteWidth));
                         return bitmap.slice(j, j + channels);
                     }).flat(), byteWidth);

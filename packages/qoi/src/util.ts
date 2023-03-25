@@ -1,3 +1,3 @@
-export function fill<T>(length: number, value: T) {
-    return Array(length).fill(null).map(() => Array.isArray(value) ? [ ...value ] : { ...value });
+export function fill<T>(length: number, cb: (index: number) => T) {
+    return Array(length).fill(null).map((_, i) => cb(i));
 }

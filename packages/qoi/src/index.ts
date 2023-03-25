@@ -44,9 +44,9 @@ export function qoi(data: Buffer): QOI {
         height,
         channels,
         colorspace,
-        data: util.fill(height, Array(width * channels))
+        data: util.fill(height, () => Array(width * channels))
     }
-    const colors = util.fill(64, [0, 0, 0, 0].slice(0, channels));
+    const colors = util.fill(64, () => [0, 0, 0, 0].slice(0, channels));
 
     let c = [0, 0, 0, 255].slice(0, channels);
     let o = 14;

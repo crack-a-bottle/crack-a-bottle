@@ -1,5 +1,5 @@
-export function fill<T>(length: number, value: T) {
-    return Array(length).fill(null).map(() => value);
+export function fill<T>(length: number, cb: ((index: number) => T) | T) {
+    return Array(length).fill(null).map((_, i): T => typeof cb == "function" ? (cb as (index: number) => T)(i) : cb);
 }
 
 export function getBit(num: number, index: number = 0) {
@@ -12,8 +12,4 @@ export function groupArray<T>(array: T[], length: number) {
         else a[a.length - 1].push(x);
         return a;
     }, []);
-}
-
-export function mapFill<T>(length: number, cb: (index: number) => T) {
-    return Array(length).fill(null).map((_, i) => cb(i));
 }
