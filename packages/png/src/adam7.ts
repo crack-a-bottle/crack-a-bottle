@@ -9,17 +9,16 @@ const pattern = [
     { x: [0, 1, 2, 3, 4, 5, 6, 7], y: [1, 3, 5, 7] }
 ]
 
-export function interlace(width: number, height: number) {
-    const arrayWidth = { length: Math.ceil(width / 8) };
-    const arrayHeight = { length: Math.ceil(height / 8) };
-
-    return pattern.reduce((a: number[][], { x, y }: Record<"x" | "y", number[]>) => {
-        const rows = Array.from(arrayWidth, (_, i) => x.map(v => v + i * 8).filter(v => v < width)).flat();
-        const columns = Array.from(arrayHeight, (_, i) => y.map(v => v + i * 8).filter(v => v < height)).flat();
-        return a.concat(columns.flatMap(c => rows.map(r => [r, c])));
+// Get the non-interlaced coordinates of each pixel in the image, ordered by interlace position.
+export function coords(width: number, height: number) {
+    return pattern.flatMap(({ x, y }) => {
+        const rows = Array.from({ length: Math.ceil(width / 8) }, (_, i) => x.map(v => v + i * 8).filter(v => v < width)).flat();
+        const columns = Array.from({ length: Math.ceil(height / 8) }, (_, i) => y.map(v => v + i * 8).filter(v => v < height)).flat();
+        return columns.flatMap(c => rows.map(r => [r, c]));
     }, []);
 }
 
+// Get the width and height of each interlace pass.
 export function passes(width: number, height: number) {
     return pattern.map(({ x, y }) => ({
         width: Math.floor(width / 8) * x.length + x.filter(v => v < width % 8).length,

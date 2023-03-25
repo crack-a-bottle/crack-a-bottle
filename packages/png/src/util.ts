@@ -1,11 +1,13 @@
-import { PNGType } from ".";
+export function copyFill<T>(length: number, value: T) {
+    return Array.from({ length }, () => Array.isArray(value) ? [ ...value ] : { ...value });
+}
 
-export function bitsPerPixel(type: PNGType, depth: number) {
-    return depth * (1 + (getBit(type, 1) ? getBit(type, 0) ? 0 : 2 : 0) + (getBit(type, 2) ? 1 : 0));
+export function fill<T>(length: number, value: T) {
+    return Array.from({ length }, () => value);
 }
 
 export function getBit(num: number, index: number = 0) {
-    return ((num >> index) & 1) > 0;
+    return !!((num >> index) & 1);
 }
 
 export function groupArray<T>(array: T[], length: number) {
@@ -14,4 +16,8 @@ export function groupArray<T>(array: T[], length: number) {
         else a[a.length - 1].push(x);
         return a;
     }, []);
+}
+
+export function mapFill<T>(length: number, cb: (index: number) => T) {
+    return Array.from({ length }, (_, i) => cb(i));
 }

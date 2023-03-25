@@ -1,51 +1,26 @@
 import * as assert from "assert";
 import * as zlib from "zlib";
 import * as adam7 from "./adam7";
-import { EMPTY_BUFFER, SIGNATURE } from "./constants";
 import * as crc from "./crc";
 import * as filter from "./filter";
 import * as util from "./util";
 
-export type PNGChunks = Record<string, any> & {
-    bKGD?: number | number[];
-    gAMA?: number;
-    hIST?: number[];
-    pHYs?: { ppuX: number, ppuY: number, specifier: number };
-    sRGB?: number;
-    tEXt?: { [key: string]: string };
-    tIME?: string;
-    tRNS?: number | number[];
-    zTXt?: { [key: string]: string };
-}
+export const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10);
 
-export enum PNGFilter { // A is the left byte, B is the upper byte, C is the upper left byte
-    NONE = 0, // Leave as is
-    SUB = 1, // Subtract/Add the left byte
-    UP = 2, // Subtract/Add the upper byte
-    AVERAGE = 3, // Subtract/Add the floored mean of the left and upper bytes
-    PAETH = 4 // Subtract/Add the byte closest to the absolute value of A + B - C
-}
-
-export type PNGHeader = {
+export interface PNG {
     width: number;
     height: number;
-    depth: number;
     type: PNGType;
-    interlace: boolean;
+    palette?: Record<number, number[]>;
+    data: number[][];
 }
 
-export type PNGPixel = {
-    r: number;
-    g: number;
-    b: number;
-    a?: number;
-}
-
-export interface PNGStream {
-    header: PNGHeader;
-    palette?: PNGPixel[];
-    data: (PNGPixel | number)[][];
-    chunks: PNGChunks;
+export enum PNGFilter {
+    NONE = 0,
+    SUB = 1,
+    UP = 2,
+    AVERAGE = 3,
+    PAETH = 4
 }
 
 export enum PNGType {
@@ -56,147 +31,86 @@ export enum PNGType {
     TRUECOLOR_ALPHA = 6
 }
 
-export function png(data: Buffer, check: boolean = true): PNGStream {
-    if (!data.subarray(0, 8).equals(SIGNATURE)) throw new SyntaxError("#: Signature not found at start of datastream");
+export function png(data: Buffer, checkRedundancy: boolean = true) {
+    assert.deepStrictEqual(SIGNATURE, data.subarray(0, 8), "Start signature not found");
 
-    const json: PNGStream = {
-        header: { width: 0, height: 0, depth: 0, type: 0, interlace: false },
-        data: [],
-        chunks: {}
-    }
+    const json: PNG = { width: 0, height: 0, type: 0, palette: undefined, data: [] };
+    const info = { depth: 0, interlace: false, channels: 0 };
 
-    let imageData = EMPTY_BUFFER;
+    let imageData = Buffer.of();
     for (let i = 8; i < data.length; i += 12) {
-        const chkLength = data.readUInt32BE(i);
-        const chkType = data.subarray(i + 4, i + 8).toString();
-        const chkData = data.subarray(i + 8, i + chkLength + 8);
+        const cLength = data.readUInt32BE(i);
+        const cType = data.subarray(i + 4, i + 8).toString();
+        const chunk = data.subarray(i + 8, i + cLength + 8);
 
-        switch (chkType) {
-            case "IHDR": // Image header chunk
-                if (![1, 2, 4, 8, 16].includes(chkData[8])) throw new SyntaxError(`IHDR: Unrecognized bit depth ${chkData[8]}`);
-                if (![0, 2, 3, 4, 6].includes(chkData[9])) throw new SyntaxError(`IHDR: Unsupported color type ${chkData[9]}`);
-                if (chkData[12] > 1) throw new SyntaxError(`IHDR: Unsupported interlace method ${chkData[12]}`);
+        if (checkRedundancy) assert.strictEqual(crc.check(data.subarray(i + 4, i + cLength + 8)), data.readUint32BE(i + cLength + 8),
+            cType + ": Cyclic redundancy check failed");
 
-                json.header.width = chkData.readUInt32BE(0);
-                json.header.height = chkData.readUint32BE(4);
-                json.header.depth = chkData[8];
-                json.header.type = chkData[9];
-                json.header.interlace = chkData[12] > 0;
-                json.data = Array.from({ length: json.header.height }, () => Array(json.header.width));
-                break;
-            case "PLTE": // Color palette chunk (Required for type 3 only)
-                json.palette = util.groupArray(chkData.toJSON().data, 3).map(x => ({ r: x[0], g: x[1], b: x[2] }));
-                break;
-            case "IDAT": // Compressed image data chunk(s)
-                imageData = Buffer.concat([imageData, chkData]);
-                break;
-            case "IEND": // Image ending chunk
-                break;
-        }
+        switch (cType) {
+            case "IHDR": { // Image header chunk
+                const width = chunk.readUInt32BE(4);
+                assert.ok(width > 0, "IHDR: Image width cannot be less than one");
+                const height = chunk.readUInt32BE(8);
+                assert.ok(height > 0, "IHDR: Image height cannot be less than one");
+                const depth = chunk[8];
+                assert.ok([1, 2, 4, 8, 16].includes(depth), "IHDR: Invalid bit depth " + depth);
+                const type = chunk[9];
+                assert.ok([0, 2, 3, 4, 6].includes(type), "IHDR: Invalid color type " + type);
+                const channels = 1 + 2 * (type & 1 ^ 1) * (type >> 1 & 1) + (type >> 2 & 1);
+                assert.strictEqual(chunk[10], 0, "IHDR: Unsupported compression method");
+                assert.strictEqual(chunk[11], 0, "IHDR: Unsupported filter method");
+                const interlace = chunk[12];
+                assert.ok(interlace < 2, "IHDR: Unsupported interlace method " + interlace);
 
-        const ancillary = util.getBit(chkType.codePointAt(0)!, 5);
-        if (ancillary) try {
-            const nullIndex = chkData.indexOf(0);
-            switch (chkType) {
-                case "bKGD": // Background color chunk
-                    json.chunks.bKGD = util.getBit(json.header.type, 0) ? chkData[0] : (util.getBit(json.header.type, 1) ?
-                            [chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)] :
-                            chkData.readUint16BE(0));
-                    break;
-                case "gAMA": // Gamma chunk
-                    json.chunks.gAMA = chkData.readUInt32BE(0) / 100000;
-                    break;
-                case "hIST": // Gamma chunk
-                    json.chunks.hIST = Array.from(new Uint16Array(chkData.buffer));
-                    break;
-                case "pHYs": // Physical image size chunk
-                    json.chunks.pHYs = {
-                        ppuX: chkData.readUInt32BE(0),
-                        ppuY: chkData.readUInt32BE(4),
-                        specifier: chkData[8]
-                    }
-                    break;
-                case "sPLT":
-                    json.chunks.sPLT ??= {};
-                    json.chunks.sPLT[chkData.subarray(0, nullIndex).toString("latin1")] =
-                        chkData[nullIndex + 1] > 8 ? new Uint16Array(chkData.subarray(nullIndex + 2).buffer) : chkData;
-                    break;
-                case "sRGB": // sRGB intent chunk
-                    json.chunks.sRGB = chkData[0];
-                    break;
-                case "tEXt":
-                    json.chunks.tEXt ??= {};
-                    json.chunks.tEXt[chkData.subarray(0, nullIndex).toString("latin1")] = chkData.subarray(nullIndex + 1).toString("latin1");
-                    break;
-                case "tIME":
-                    json.chunks.tIME = `${[
-                        chkData.readUint16BE(0).toString(),
-                        chkData[2].toString().padStart(2, "0"),
-                        chkData[3].toString().padStart(2, "0")
-                    ].join("-")}T${[
-                        chkData[4].toString().padStart(2, "0"),
-                        chkData[5].toString().padStart(2, "0"),
-                        chkData[6].toString().padStart(2, "0")
-                    ].join(":")}+00:00`;
-                    break;
-                case "tRNS": // Transparent colors chunk
-                    json.chunks.tRNS = util.getBit(json.header.type, 0) ? chkData.toJSON().data : (util.getBit(json.header.type, 1) ?
-                    [chkData.readUint16BE(0), chkData.readUint16BE(2), chkData.readUint16BE(4)] :
-                    chkData.readUint16BE(0));
-                    break;
-                case "zTXt":
-                    json.chunks.zTXt ??= {};
-                    json.chunks.zTXt[chkData.subarray(0, nullIndex).toString("latin1")] = zlib.inflateSync(chkData.subarray(nullIndex + 2)).toString("latin1");
-                    break;
-                default:
-                    json.chunks[chkType] = chkData.toJSON().data;
-                    break;
+                json.width = width;
+                json.height = height;
+                json.type = type;
+
+                info.channels = channels;
+                info.depth = depth;
+                info.interlace = !!interlace;
+
+                json.data = util.copyFill(height, Array(width * channels));
+                break;
             }
-        } catch { continue; }
+            case "PLTE": {// Color palette chunk (Required for type 3 only)
+                json.palette = { ...util.groupArray(chunk.toJSON().data, 3) };
+                break;
+            }
+            case "IDAT": { // Compressed image data chunk(s)
+                imageData = Buffer.concat([imageData, chunk]);
+                break;
+            }
+            case "IEND": { // Image ending chunk (After ALL chunks are parsed, parse the image data)
+                const { width, height } = json;
+                const { depth, interlace, channels } = info;
+                const byteWidth = width * channels;
 
-        if (check) {
-            try {
-                assert.strictEqual(crc.check(data.subarray(i + 4, i + chkLength + 8)), data.readUint32BE(i + chkLength + 8),
-                    `${chkType}: Cyclic redundancy check failed`);
-            } catch (err) {
-                if (!ancillary) throw err;
+                imageData = zlib.inflateSync(imageData, {
+                    chunkSize: interlace ?
+                        zlib.constants.Z_DEFAULT_CHUNK :
+                        Math.max((((width * channels * depth + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
+                });
+                if (!imageData || !imageData.length) throw new Error("IDAT: Invalid inflate response");
+                else imageData = filter.reverse(imageData, { width, height, depth, channels, interlace });
+
+                const bitmap = depth <= 8 ?
+                    imageData.toJSON().data.flatMap(x => util.mapFill(depth / 8, y => (x >> depth * y) % 2 ** depth).reverse()) :
+                    imageData.toJSON().data.map((x, j) => j % 2 == 0 ? ((x << 8) | imageData[j + 1]) : null).filter((x): x is number => x != null);
+                if (interlace) {
+                    const coords = adam7.coords(width, height).map(x => [x[0] * channels, x[1]]);
+                    json.data = util.groupArray(util.mapFill(byteWidth * height, x => {
+                        const j = coords.findIndex(y => y[0] == x % byteWidth && y[1] == Math.floor(x / byteWidth));
+                        return bitmap.slice(j, j + channels);
+                    }).flat(), byteWidth);
+                } else json.data = util.groupArray(bitmap, byteWidth);
+
+                break;
             }
         }
 
-        i += chkLength;
+        i += cLength;
     }
-
-    const { width, height, depth, type, interlace } = json.header;
-
-    imageData = zlib.inflateSync(imageData, {
-        chunkSize: interlace ? 16384 : Math.max((((width * util.bitsPerPixel(type, depth) + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
-    });
-    if (!imageData || !imageData.length) throw new Error("IDAT: Invalid inflate response");
-    else imageData = filter.reverse(imageData, json.header);
-
-    const multiplier = 8 / depth;
-    const bitmap = util.groupArray(
-        (depth <= 8 ? imageData.reduce((a: number[], x: number, i: number) => [
-            ...a.slice(0, i * multiplier),
-            ...[7, 6, 5, 4, 3, 2, 1, 0].slice(8 - multiplier).map(y => depth * y).map(y => (x >> y) & (2 ** depth - 1)),
-            ...a.slice((i + 1) * multiplier)
-        ], Array(imageData.length * multiplier)) : util.groupArray(Array.from(imageData), 2).map(x => (x[0] << 8) | x[1])),
-        util.bitsPerPixel(type, 1)
-    ).map((x): PNGPixel | number => {
-        switch (type) {
-            case PNGType.GRAYSCALE: return { r: x[0], g: x[0], b: x[0] };
-            case PNGType.TRUECOLOR: return { r: x[0], g: x[1], b: x[2] };
-            case PNGType.INDEX_COLOR: return x[0];
-            case PNGType.GRAYSCALE_ALPHA: return { r: x[0], g: x[0], b: x[0], a: x[1] };
-            case PNGType.TRUECOLOR_ALPHA: return { r: x[0], g: x[1], b: x[2], a: x[3] };
-        }
-    });
-
-    if (interlace) {
-        const coords = adam7.interlace(width, height);
-        json.data = util.groupArray(Array.from({ length: width * height }, (_, x) =>
-            bitmap[coords.findIndex(y => y[0] == (x % width) && y[1] == Math.floor(x / width))] ?? {}), width);
-    } else json.data = util.groupArray(bitmap, width);
 
     return json;
 }

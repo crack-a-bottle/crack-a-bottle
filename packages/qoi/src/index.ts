@@ -1,27 +1,23 @@
 import * as assert from "assert";
-import { END_SIGNATURE, SIGNATURE } from "./constants";
+import * as util from "./util";
+
+export const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 0, 0, 0, 1);
+export const SIGNATURE = Buffer.of(113, 111, 105, 102);
 
 export enum QOIChannels {
     RGB = 3,
     RGBA = 4
 }
 
-export interface QOIStream {
+export interface QOI {
     width: number;
     height: number;
     channels: QOIChannels;
     colorspace: number;
-    data: Buffer;
+    data: number[][];
 }
 
-export type QOIPixel = {
-    r: number;
-    g: number;
-    b: number;
-    a?: number;
-}
-
-export enum QOIPixelType {
+export enum QOIPixel {
     INDEX = 0,
     DIFF = 64,
     LUMA = 128,
@@ -30,76 +26,80 @@ export enum QOIPixelType {
     RGBA = 255
 }
 
-export function qoi(data: Buffer): QOIStream {
-    assert.ok(data.subarray(0, 4).equals(SIGNATURE), "Start signature not found");
-    assert.ok(data.subarray(-8).equals(END_SIGNATURE), "End signature not found");
+export function qoi(data: Buffer): QOI {
+    assert.deepStrictEqual(SIGNATURE, data.subarray(0, 4), "Start signature not found");
+    assert.deepStrictEqual(END_SIGNATURE, data.subarray(-8), "End signature not found");
 
     const width = data.readUInt32BE(4);
-    assert.ok(width > 0, "Image width is less than one");
+    assert.ok(width > 0, "Image width cannot be less than one");
     const height = data.readUInt32BE(8);
-    assert.ok(height > 0, "Image height is less than one");
+    assert.ok(height > 0, "Image height cannot be less than one");
     const channels = data[12];
-    assert.ok(channels >= 3 && channels <= 4, "Unsupported channel amount " + channels);
-    const colorspace = data[12];
-    assert.ok(channels >= 0 && channels <= 1, "Unsupported colorspace " + colorspace);
+    assert.ok(channels > 2 && channels < 5, "Invalid channel amount " + channels);
+    const colorspace = data[13];
+    assert.ok(colorspace >= 0 && colorspace <= 1, "Unsupported colorspace " + colorspace);
 
-    const json: QOIStream = {
+    const json: QOI = {
         width,
         height,
         channels,
         colorspace,
-        data: Buffer.alloc(width * height * channels)
+        data: util.fill(height, Array(width * channels))
     }
-
-    const colors = Array.from({ length: 64 }, (): number[] => ([0, 0, 0, 0]));
+    const colors = util.fill(64, [0, 0, 0, 0].slice(0, channels));
 
     let c = [0, 0, 0, 255].slice(0, channels);
     let o = 14;
     let l = 0;
-    for (let i = 0; i < json.data.length; i += channels) {
-        if (l > 0) l--;
-        else if (o < data.length - 8) {
-            const [ r, g, b ] = c;
-            const px = data[o] & 63;
-            const pxType = data[o] <= 253 ? data[o] : data[o] & 192;
-            switch (pxType) {
-                case QOIPixelType.RGB:
-                    c[0] = data[++o];
-                    c[1] = data[++o];
-                    c[2] = data[++o];
-                    break;
-                case QOIPixelType.RGBA:
-                    c[0] = data[++o];
-                    c[1] = data[++o];
-                    c[2] = data[++o];
-                    if (channels == QOIChannels.RGBA) c[3] = data[++o];
-                    break;
-                case QOIPixelType.INDEX:
-                    c = colors[px].slice(0, channels);
-                    break;
-                case QOIPixelType.DIFF:
-                    c[0] = (r + (px & 3) - 2) & 255;
-                    c[1] = (g + ((px >> 2) & 3) - 2) & 255;
-                    c[2] = (b + ((px >> 4) & 3) - 2) & 255;
-                    break;
-                case QOIPixelType.LUMA:
-                    const px2 = data[++o];
-                    c[0] = (r + px + (px2 & 15) - 40) & 255;
-                    c[1] = (g + px - 32) & 255;
-                    c[2] = (b + px + ((px2 >> 4) & 15) - 40) & 255;
-                    break;
-                case QOIPixelType.RUN:
-                    l = px;
-                    break;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width * channels; x += channels) {
+            if (l > 0) l--;
+            else if (o < data.length - 8) {
+                const px = data[o] & 63;
+                const pxType = data[o] <= 253 ? data[o] : data[o] & 192;
+                switch (pxType) {
+                    case QOIPixel.RGB:
+                        c[0] = data[++o];
+                        c[1] = data[++o];
+                        c[2] = data[++o];
+                        break;
+                    case QOIPixel.RGBA:
+                        c[0] = data[++o];
+                        c[1] = data[++o];
+                        c[2] = data[++o];
+                        if (channels == QOIChannels.RGBA) c[3] = data[++o];
+                        else o++;
+                        break;
+                    case QOIPixel.INDEX:
+                        c = colors[px].slice(0, channels);
+                        break;
+                    case QOIPixel.DIFF:
+                        c[0] += (px & 3) - 2;
+                        c[1] += (px >> 2 & 3) - 2;
+                        c[2] += (px >> 4 & 3) - 2;
+                        c = c.map(v => v & 255);
+                        break;
+                    case QOIPixel.LUMA:
+                        const px2 = data[++o];
+                        c[0] += px + (px2 & 15) - 40;
+                        c[1] += px - 32;
+                        c[2] += (px2 >> 4 & 15) - 40;
+                        c = c.map(v => v & 255);
+                        break;
+                    case QOIPixel.RUN:
+                        l = px;
+                        break;
+                }
+
+                c = c.map(v => v & 255);
+                if (pxType != QOIPixel.RUN && pxType != QOIPixel.INDEX)
+                    colors.splice((c[0] * 3 + c[1] * 5 + c[2] * 7 + (c[3] ?? 255) * 11) % 64, 1, c);
+
+                o++;
             }
 
-            if (pxType != QOIPixelType.RUN && pxType != QOIPixelType.INDEX)
-                colors.splice((c[0] * 3 + c[1] * 5 + c[2] * 7 + (c[3] ?? 255) * 11) % 64, 1, c);
-
-            o++;
+            json.data[y].splice(x, channels, ...c);
         }
-
-        json.data.set(c, i);
     }
 
     return json;
