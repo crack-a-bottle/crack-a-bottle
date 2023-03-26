@@ -28,7 +28,7 @@ export enum QOIPixel {
 
 export function qoi(data: Buffer): QOI {
     assert.deepStrictEqual(SIGNATURE, data.subarray(0, 4), "Start signature not found");
-    assert.deepStrictEqual(END_SIGNATURE, data.subarray(-8), "End signature not found");
+    assert.ok(data.includes(END_SIGNATURE), "End signature not found");
 
     const width = data.readUInt32BE(4);
     assert.ok(width > 0, "Image width cannot be less than one");
@@ -47,6 +47,7 @@ export function qoi(data: Buffer): QOI {
         data: util.fill(height, () => Array(width * channels))
     }
     const colors = util.fill(64, () => [0, 0, 0, 0].slice(0, channels));
+    const end = data.lastIndexOf(END_SIGNATURE);
 
     let c = [0, 0, 0, 255].slice(0, channels);
     let o = 14;
@@ -54,7 +55,7 @@ export function qoi(data: Buffer): QOI {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width * channels; x += channels) {
             if (l > 0) l--;
-            else if (o < data.length - 8) {
+            else if (o < end) {
                 const px = data[o] & 63;
                 const pxType = data[o] <= 253 ? data[o] : data[o] & 192;
                 switch (pxType) {

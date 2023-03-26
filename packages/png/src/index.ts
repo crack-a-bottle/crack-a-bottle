@@ -34,13 +34,14 @@ export enum PNGType {
 
 export function png(data: Buffer, checkRedundancy: boolean = true) {
     assert.deepStrictEqual(SIGNATURE, data.subarray(0, 8), "Start signature not found");
-    assert.deepStrictEqual(END_SIGNATURE, data.subarray(-12), "End signature not found");
+    assert.ok(data.includes(END_SIGNATURE), "End signature not found");
 
     const json: PNG = { width: 0, height: 0, type: 0, palette: undefined, data: [] };
     const info = { depth: 0, interlace: false, channels: 0 };
+    const end = data.indexOf(END_SIGNATURE) + 12;
 
     let imageData = Buffer.of();
-    for (let i = 8; i < data.length; i += 12) {
+    for (let i = 8; i < end; i += 12) {
         const cLength = data.readUInt32BE(i);
         const cType = data.subarray(i + 4, i + 8).toString();
         const chunk = data.subarray(i + 8, i + cLength + 8);
