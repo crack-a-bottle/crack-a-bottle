@@ -73,7 +73,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 info.depth = depth;
                 info.interlace = !!interlace;
 
-                json.data = util.fill(height, Array(width * channels));
+                json.data = util.fill(height, () => Array(width * channels));
                 break;
             }
             case "PLTE": {// Color palette chunk (Required for type 3 only)
@@ -87,27 +87,27 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             case "IEND": { // Image ending chunk (After ALL chunks are parsed, parse the image data)
                 const { width, height } = json;
                 const { depth, interlace, channels } = info;
-                const byteWidth = width * channels;
+                const bitWidth = width * channels;
 
                 imageData = zlib.inflateSync(imageData, {
                     chunkSize: interlace ?
                         zlib.constants.Z_DEFAULT_CHUNK :
-                        Math.max((((width * channels * depth + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
+                        Math.max((((bitWidth * depth + 7) >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
                 });
                 if (!imageData || !imageData.length) throw new Error("IDAT: Invalid inflate response");
                 else imageData = filter.reverse(imageData, { width, height, depth, channels, interlace });
-
+                const byteDepth = 8 / depth;
                 const bitmap = depth <= 8 ?
-                    imageData.toJSON().data.flatMap(x => util.fill(8 / depth, y => (x >> depth * y) % 2 ** depth).reverse()) :
-                    imageData.toJSON().data.map((x, j) => j % 2 == 0 ? ((x << 8) | imageData[j + 1]) : null).filter((x): x is number => x != null);
+                    imageData.toJSON().data.flatMap(x => util.fill(byteDepth, y => (x >> depth * y) % 2 ** depth).reverse()).slice() :
+                    imageData.toJSON().data.map((x, j) => j % 2 == 0 ? ((x << 8) | imageData[j + 1]) : NaN).filter(x => !Number.isNaN(x));
+
                 if (interlace) {
                     const coords = adam7.coords(width, height).map(x => [x[0] * channels, x[1]]);
-                    json.data = util.groupArray(util.fill(byteWidth * height, x => {
-                        const j = coords.findIndex(y => y[0] == x % byteWidth && y[1] == Math.floor(x / byteWidth));
-                        return bitmap.slice(j, j + channels);
-                    }).flat(), byteWidth);
-                } else json.data = util.groupArray(bitmap, byteWidth);
-
+                    json.data = util.groupArray(util.fill(bitWidth * height, x => {
+                        const j = coords.findIndex(y => y[0] == x % bitWidth && y[1] == Math.floor(x / bitWidth)) * channels;
+                        return j >= 0 ? bitmap.slice(j, j + channels) : util.fill(channels, () => NaN);
+                    }).flat(), bitWidth);
+                } else json.data = util.groupArray(bitmap, Math.ceil(bitWidth / byteDepth) * byteDepth).map(x => x.slice(0, bitWidth));
                 break;
             }
         }

@@ -1,5 +1,5 @@
-export function fill<T>(length: number, cb: ((index: number) => T) | T) {
-    return Array(length).fill(null).map((_, i): T => typeof cb == "function" ? (cb as (index: number) => T)(i) : cb);
+export function fill<T>(length: number, cb: (index: number) => T) {
+    return Array(length).fill(null).map((_, i) => cb(i));
 }
 
 export function getBit(num: number, index: number = 0) {
