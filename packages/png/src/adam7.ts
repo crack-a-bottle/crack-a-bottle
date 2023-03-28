@@ -1,6 +1,6 @@
-import * as util from "./util";
-
 // Adam7 interlace algorithm (Implementing this was torturous)
+
+// The interlace pattern used in the Adam7 algorithm.
 const pattern = [
     { x: [0], y: [0] },
     { x: [4], y: [0] },
@@ -11,19 +11,12 @@ const pattern = [
     { x: [0, 1, 2, 3, 4, 5, 6, 7], y: [1, 3, 5, 7] }
 ]
 
-// Get the non-interlaced coordinates of each pixel in the image, ordered by interlace position.
-export function coords(width: number, height: number) {
-    return pattern.flatMap(({ x, y }) => {
-        const rows = util.fill(Math.ceil(width / 8), i => x.map(v => v + i * 8).filter(v => v < width)).flat();
-        const columns = util.fill(Math.ceil(height / 8), i => y.map(v => v + i * 8).filter(v => v < height)).flat();
-        return columns.flatMap(c => rows.map(r => [r, c]));
-    }, []);
-}
-
-// Get the width and height of each interlace pass.
-export function passes(width: number, height: number) {
-    return pattern.map(({ x, y }) => ({
-        width: Math.floor(width / 8) * x.length + x.filter(v => v < width % 8).length,
-        height: Math.floor(height / 8) * y.length + y.filter(v => v < height % 8).length
-    })).filter(p => p.width > 0 && p.height > 0);
+// Get info on each interlace pass of an image.
+export = function adam7(width: number, height: number) {
+    return {
+        passes: pattern.map(p => ({
+            x: (Array(Math.ceil(width / 8)).fill(p.x) as number[][]).flatMap((x, c) => x.map(w => w + c * 8).filter(w => w < width)),
+            y: (Array(Math.ceil(height / 8)).fill(p.y) as number[][]).flatMap((y, r) => y.map(h => h + r * 8).filter(h => h < height))
+        })).filter(p => p.x.length > 0 && p.y.length > 0)
+    }
 }

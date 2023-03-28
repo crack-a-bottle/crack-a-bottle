@@ -1,5 +1,5 @@
-// Cyclic redundancy checker (In case of errors n shit)
-export const table = [
+// Cyclic redundancy table (Hardcoded because ughhhh)
+const table = [
     0x00000000,
     0x77073096,
     0xEE0E612C,
@@ -258,6 +258,7 @@ export const table = [
     0x2D02EF8D
 ]
 
-export function check(data: Buffer) {
+// Cyclic redundancy checker (In case of inaccuracies)
+export = function crc(data: Buffer) {
     return (data.reduce((a, x) => table[(a ^ x) & 255] ^ (a >>> 8), -1) ^ -1) >>> 0;
 }
