@@ -85,8 +85,8 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             }
             case "PLTE": {// Color palette chunk (Required for type 3 only)
                 json.palette ??= {};
-                chunk.reduce((a, x, j) => j % 3 == 0 ? a.concat([[x]]) : a.slice(0, -1).concat([a[a.length - 1].concat(x)]),
-                    [] as number[][]).forEach((x, j) => json.palette![j] = x);
+                chunk.reduce((a: number[][], x, j) => j % 3 == 0 ? a.concat([[x]]) :
+                    a.slice(0, -1).concat([a[a.length - 1].concat(x)]), []).forEach((x, j) => json.palette![j] = x);
                 break;
             }
             case "IDAT": { // Compressed image data chunk(s)
@@ -94,7 +94,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 break;
             }
             case "IEND": { // Image ending chunk (After ALL chunks are parsed, parse the image data)
-                const { width, height } = json;
+                const { width, height, type } = json;
                 const { depth, interlace, channels } = info;
                 const sampleDepth = channels * depth;
                 const bitWidth = width * sampleDepth;
@@ -112,7 +112,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 const bitmap = bits.extract(filter.reverse(imageData, passes.map(({ x, y }) => ({
                     width: (x.length * sampleDepth + 7 >> 3) + 1,
                     height: y.length
-                })), { ...info }), depth);
+                })), { ...info }), { depth, type });
 
                 const coords = passes.map(({ x, y }) => ({
                     x: x.concat(Array((8 - (x.length * sampleDepth % 8 || 8)) / depth).fill(NaN)),
