@@ -4,28 +4,30 @@ import { PNGFilter } from ".";
 
 // Reverse the filters that were used on each scanline of the PNG image data.
 // This takes the uncompressed data, and reverses the filters used on its scanlines to get the original data.
-// To properly identify scanlines, the function needs to know some header info as well.
-export function reverse(data: Buffer, { channels, depth, images }:
-    Record<"channels" | "depth", number> & Record<"images", Record<"width" | "height", number>[]>) {
-    // The sample distance, in bytes
-    // If the bit depth is eight or more bits per sample, then compare channel-wise, byte-wise,
-    // otherwise just compare byte-wise (Usually this means the filter method is NONE)
-    const distance = (!!(depth >> 3) ? channels * depth : 8) / 8;
+// To properly identify scanlines, the function needs to know some important info, such as the width and height
+// of each image, the number of samples per pixel, and the bit depth per sample.
+export function reverse(data: Buffer, images: Record<"width" | "height", number>[], { channels, depth }: Record<"channels" | "depth", number>) {
+    // The distance between channel samples, in bytes
+    // If the bit depth is eight or more bits per sample, then compare channel-wise, byte-wise, otherwise just compare byte-wise
+    // (Usually this means the filter method is NONE)
+    const length = (!!(depth >> 3) ? channels * depth : 8) / 8;
+    // The array of unfiltered scanlines to concatenate.
+    const scanlines: Buffer[] = [];
 
-    // A function to reverse the filter used on the scanline.
-    let unfilter: (a: Buffer, b: number, x: number) => Buffer = a => a;
     // The data offset of the current image
     let i = 0;
-    // For each image, reverse filters and add to image data
-    return Buffer.concat(images.reduce((scanlines: Buffer[], { width, height }) => {
+    // A function to reverse the filter used on the scanline.
+    let unfilter: (a: Buffer, b: number, x: number) => Buffer = a => a;
+    // For each image, reverse scanline filters and add to image data
+    for (const { width, height } of images) {
         // The block of image data to scan from, starting from the specified offset in case of Adam7
         const image = data.subarray(i, i += width * height);
         // An empty buffer with the length of the image's byte width
         const empty = Buffer.alloc(width - 1);
 
         // For every scanline, reverse filter and add to image data
-        return scanlines.concat(Array(height).fill(empty).map((_, y) => image.subarray(y * width, (y + 1) * width))
-            .map(([ filter, ...line ], y) => {
+        for (const [ y, [ filter, ...line ] ] of Array(height).fill(0)
+            .map((_, y) => image.subarray(y * width, (y + 1) * width)).entries()) {
             // Make sure the filter is valid
             assert.ok(filter < 5, "IDAT: Unrecognized filter type " + filter);
 
@@ -41,7 +43,7 @@ export function reverse(data: Buffer, { channels, depth, images }:
                     break;
                 case PNGFilter.SUB: // Add the unfiltered left byte to the current filtered byte
                     unfilter = (a, b, x) => {
-                        a.set([b + (x >= distance ? a[x - distance] : 0)], x);
+                        a.set([b + (x >= length ? a[x - length] : 0)], x);
                         return a;
                     }
                     break;
@@ -53,15 +55,15 @@ export function reverse(data: Buffer, { channels, depth, images }:
                     break;
                 case PNGFilter.AVERAGE: // Add the floored mean of the unfiltered left and upper bytes to the current filtered byte
                     unfilter = (a, b, x) => {
-                        a.set([b + Math.floor(((x >= distance ? a[x - distance] : 0) + (y > 0 ? previous[x] : 0)) / 2)], x);
+                        a.set([b + Math.floor(((x >= length ? a[x - length] : 0) + (y > 0 ? previous[x] : 0)) / 2)], x);
                         return a;
                     }
                     break;
                 case PNGFilter.PAETH: // Most complex filter, add the byte that is closest to P (A + B - C) to the current filtered byte
                     unfilter = (a, b, x) => {
-                        const A = x >= distance ? a[x - distance] : 0;
+                        const A = x >= length ? a[x - length] : 0;
                         const B = y > 0 ? previous[x] : 0;
-                        const C = x >= distance && y > 0 ? previous[x - distance] : 0;
+                        const C = x >= length && y > 0 ? previous[x - length] : 0;
 
                         // I optimized this by subtracting from both sides lmao
                         const paethA = Math.abs(B - C);         // P - A = A + B - C - A = B - C
@@ -86,8 +88,10 @@ export function reverse(data: Buffer, { channels, depth, images }:
             }
 
             // Use Array#reduce to view unfiltered scanline as it is created (Array#map doesn't allow that)
-            // Return as unfiltered buffer when finished
-            return line.reduce(unfilter, Buffer.from(empty));
-        }));
-    }, []));
+            // Push unfiltered buffer to scanlines array when finished
+            scanlines.push(line.reduce(unfilter, Buffer.from(empty)));
+        }
+    }
+
+    return Buffer.concat(scanlines);
 }

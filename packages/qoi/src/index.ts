@@ -46,7 +46,7 @@ export function qoi(data: Buffer) {
     let o = 14;
     let l = 0;
     for (const y of json.data.values()) {
-        for (const x of y.map((_, i) => i).filter(i => i % type == 0).values()) {
+        for (const x of y.map((_, x) => x).filter(x => x % type == 0).values()) {
             if (l > 0) l--;
             else if (o < end) {
                 const px = data[o] & 63;

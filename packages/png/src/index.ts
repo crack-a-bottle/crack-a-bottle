@@ -109,8 +109,10 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     x: Array(width).fill(0).map((_, x) => x),
                     y: Array(height).fill(0).map((_, y) => y),
                 }]);
-                const bitmap = bits.extract(filter.reverse(imageData, { images: passes.map(({ x, y }) =>
-                    ({ width: (x.length * sampleDepth + 7 >> 3) + 1, height: y.length })), ...info }), depth);
+                const bitmap = bits.extract(filter.reverse(imageData, passes.map(({ x, y }) => ({
+                    width: (x.length * sampleDepth + 7 >> 3) + 1,
+                    height: y.length
+                })), { ...info }), depth);
 
                 const coords = passes.map(({ x, y }) => ({
                     x: x.concat(Array((8 - (x.length * sampleDepth % 8 || 8)) / depth).fill(NaN)),
