@@ -7,33 +7,32 @@ import { PNGFilter } from ".";
 // To properly identify scanlines, the function needs to know some header info as well.
 export function reverse(data: Buffer, { channels, depth, images }:
     Record<"channels" | "depth", number> & Record<"images", Record<"width" | "height", number>[]>) {
-    const bpp = channels * depth;
-    const scanlines: Buffer[] = [];
+    // The sample distance, in bytes
+    // If the bit depth is eight or more bits per sample, then compare channel-wise, byte-wise,
+    // otherwise just compare byte-wise (Usually this means the filter method is NONE)
+    const distance = (!!(depth >> 3) ? channels * depth : 8) / 8;
 
+    // A function to reverse the filter used on the scanline.
+    let unfilter: (a: Buffer, b: number, x: number) => Buffer = a => a;
+    // The data offset of the current image
     let i = 0;
-    for (const { width, height } of images) {
-        // The block of image data to scan from, starting from a specified offset in case of Adam7
-        const imageData = data.subarray(i, i += width * height);
-        // An empty buffer with a length of the image's byte width
+    // For each image, reverse filters and add to image data
+    return Buffer.concat(images.reduce((scanlines: Buffer[], { width, height }) => {
+        // The block of image data to scan from, starting from the specified offset in case of Adam7
+        const image = data.subarray(i, i += width * height);
+        // An empty buffer with the length of the image's byte width
         const empty = Buffer.alloc(width - 1);
 
-        // A function to reverse the filter used on the scanline.
-        let unfilter: (a: Buffer, b: number, x: number) => Buffer = a => a;
-        // For every scanline, do the following
-        for (let y = 0; y < height; y++) {
-            // The scanline to reverse the filter (at index 0) on.
-            const scanline = imageData.subarray(y * width, (y + 1) * width);
-            // The sample distance, in bytes
-            // If the bit depth is eight or more bits per sample, then compare channel-wise, byte-wise,
-            // otherwise just compare byte-wise (Usually this means the filter method is NONE)
-            const distance = (!!(depth >> 3) ? bpp : 8) / 8;
+        // For every scanline, reverse filter and add to image data
+        return scanlines.concat(Array(height).fill(empty).map((_, y) => image.subarray(y * width, (y + 1) * width))
+            .map(([ filter, ...line ], y) => {
+            // Make sure the filter is valid
+            assert.ok(filter < 5, "IDAT: Unrecognized filter type " + filter);
+
             // The previous unfiltered scanline, or an empty one if y is more than zero
             const previous = y > 0 ? scanlines[scanlines.length - 1] : empty;
-
-            // Make sure the filter is valid
-            assert.ok(scanline[0] < 5, "IDAT: Unrecognized filter type " + scanline[0]);
             // Get the filter used on the scanline and determine what to do
-            switch (scanline[0]) {
+            switch (filter) {
                 case PNGFilter.NONE: // Least complex filter, leave byte as is
                     unfilter = (a, b, x) => {
                         a.set([b], x);
@@ -86,12 +85,9 @@ export function reverse(data: Buffer, { channels, depth, images }:
                     break;
             }
 
-            // Use TypedArray#reduce to view unfiltered scanline as it is created
-            // Push to scanlines array when finished
-            scanlines.push(scanline.subarray(1).reduce(unfilter, Buffer.from(empty)));
-        }
-    }
-
-    // Return unfiltered PNG data
-    return Buffer.concat(scanlines);
+            // Use Array#reduce to view unfiltered scanline as it is created (Array#map doesn't allow that)
+            // Return as unfiltered buffer when finished
+            return line.reduce(unfilter, Buffer.from(empty));
+        }));
+    }, []));
 }

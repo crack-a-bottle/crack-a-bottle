@@ -85,7 +85,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             }
             case "PLTE": {// Color palette chunk (Required for type 3 only)
                 json.palette ??= {};
-                chunk.reduce((a, x, j) => j % 3 == 0 ? a.concat([[x]]) : a.slice(0, -1).concat(a[a.length - 1].concat(x)),
+                chunk.reduce((a, x, j) => j % 3 == 0 ? a.concat([[x]]) : a.slice(0, -1).concat([a[a.length - 1].concat(x)]),
                     [] as number[][]).forEach((x, j) => json.palette![j] = x);
                 break;
             }
@@ -100,29 +100,27 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 const bitWidth = width * sampleDepth;
 
                 imageData = zlib.inflateSync(imageData, {
-                    chunkSize: interlace ?
-                        zlib.constants.Z_DEFAULT_CHUNK :
+                    chunkSize: interlace ? zlib.constants.Z_DEFAULT_CHUNK :
                         Math.max(((bitWidth + 7 >> 3) + 1) * height, zlib.constants.Z_MIN_CHUNK)
                 });
                 if (!imageData || !imageData.length) throw new Error("IDAT: Invalid inflate response");
 
                 const passes = (interlace ? adam7(width, height).passes : [{
-                    x: Array(width).fill(null).map((_, x) => x),
-                    y: Array(height).fill(null).map((_, y) => y),
+                    x: Array(width).fill(0).map((_, x) => x),
+                    y: Array(height).fill(0).map((_, y) => y),
                 }]);
-                const bitmap = bits.extract(filter.reverse(imageData, { images: passes.map(({ x, y }) => ({
-                    width: (x.length * sampleDepth + 7 >> 3) + 1,
-                    height: y.length
-                })), ...info }), depth);
+                const bitmap = bits.extract(filter.reverse(imageData, { images: passes.map(({ x, y }) =>
+                    ({ width: (x.length * sampleDepth + 7 >> 3) + 1, height: y.length })), ...info }), depth);
 
                 const coords = passes.map(({ x, y }) => ({
                     x: x.concat(Array((8 - (x.length * sampleDepth % 8 || 8)) / depth).fill(NaN)),
                     y })).flatMap(({ x, y }) => y.flatMap(r => x.map(c => [c, r])));
                 json.data = Array(height).fill(Array(width).fill(0)
                     .concat(Array((8 - (bitWidth % 8 || 8)) / depth).fill(NaN)))
-                    .map((r: number[], y) => r.flatMap((c, x) => !Number.isNaN(c) ?
-                        bitmap.slice(coords.findIndex(z => z[0] == x && z[1] == y) * channels).slice(0, channels) : [NaN]));
-                    //.map(y => y.filter(x => !Number.isNaN(x)));
+                    .map((r: number[], y) => r
+                        .flatMap((c, x) => Number.isNaN(c) ? [NaN] :
+                            bitmap.slice(coords.findIndex(z => z[0] == x && z[1] == y) * channels).slice(0, channels))
+                        .filter(x => !Number.isNaN(x)));
                 break;
             }
         }

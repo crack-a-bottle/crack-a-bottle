@@ -1,4 +1,4 @@
-// Adam7 interlace algorithm (Implementing this was torturous)
+// Adam7 interlace algorithm (Implementing this was torturous, until it wasn't)
 
 // The interlace pattern used in the Adam7 algorithm.
 const pattern = [
@@ -13,10 +13,13 @@ const pattern = [
 
 // Get info on each interlace pass of an image.
 export = function adam7(width: number, height: number) {
+    const passesX = Array(Math.ceil(width / 8)).fill(0).map((_, x) => x);
+    const passesY = Array(Math.ceil(height / 8)).fill(0).map((_, y) => y);
+
     return {
-        passes: pattern.map(p => ({
-            x: (Array(Math.ceil(width / 8)).fill(p.x) as number[][]).flatMap((x, c) => x.map(w => w + c * 8).filter(w => w < width)),
-            y: (Array(Math.ceil(height / 8)).fill(p.y) as number[][]).flatMap((y, r) => y.map(h => h + r * 8).filter(h => h < height))
-        })).filter(p => p.x.length > 0 && p.y.length > 0)
+        passes: pattern.map(({ x, y }) => ({
+            x: passesX.flatMap(c => x.map(w => w + c * 8).filter(w => w < width)),
+            y: passesY.flatMap(r => y.map(h => h + r * 8).filter(h => h < height))
+        })).filter(({ x, y }) => x.length > 0 && y.length > 0)
     }
 }
