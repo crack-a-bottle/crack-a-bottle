@@ -19,7 +19,8 @@
   ],
   "scripts": {
     "build": "tsup",
-    "prepack": "pnpm build"
+    "prepack": "pnpm build",
+    "test": "node examples"
   },
   "repository": {
     "type": "git",
