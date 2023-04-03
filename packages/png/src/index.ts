@@ -2,7 +2,7 @@ import * as assert from "assert";
 import * as zlib from "zlib";
 import adam7 from "./adam7";
 import bit from "./bits";
-import crc from "./crc";
+import * as chunks from "./chunks";
 import filters from "./filter";
 
 export const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130);
@@ -45,27 +45,20 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
     const end = data.indexOf(END_SIGNATURE) + 12;
 
     let imageData = Buffer.of();
-    for (let o = 8; o < end; o += 12) {
-        const cLength = data.readUInt32BE(o);
-        const cType = data.subarray(o + 4, o + 8).toString();
-        const chunk = data.subarray(o + 8, o + cLength + 8);
-
-        if (checkRedundancy) assert.strictEqual(crc(data.subarray(o + 4, o + cLength + 8)), data.readUint32BE(o + cLength + 8),
-            cType + ": Cyclic redundancy check failed");
-
-        switch (cType) {
+    for (const [o, chunk] of chunks.extract(data.subarray(8, end), checkRedundancy).entries()) {
+        switch (chunk.type) {
             case "IHDR": { // Image header chunk
-                assert.strictEqual(o, 8, "IHDR: Header chunk cannot be after another chunk");
-                assert.strictEqual(cLength, 13, "IHDR: Header chunk must be 13 bytes long");
+                assert.strictEqual(o, 0, "IHDR: Header chunk cannot be after another chunk");
+                assert.strictEqual(chunk.data.length, 13, "IHDR: Header chunk must be 13 bytes long");
 
-                const width = chunk.readUInt32BE(0);
+                const width = chunk.data.readUInt32BE(0);
                 assert.notStrictEqual(width, 0, "IHDR: Image width cannot be less than one");
-                const height = chunk.readUInt32BE(4);
+                const height = chunk.data.readUInt32BE(4);
                 assert.notStrictEqual(height, 0, "IHDR: Image height cannot be less than one");
 
-                const depth = chunk[8];
+                const depth = chunk.data[8];
                 assert.ok(DEPTHS.includes(depth), "IHDR: Invalid bit depth " + depth);
-                const type = chunk[9];
+                const type = chunk.data[9];
                 assert.ok(TYPES.includes(type), "IHDR: Invalid color type " + type);
                 switch (type) {
                     case PNGType.TRUECOLOR:
@@ -78,9 +71,9 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                         assert.strictEqual(depth % 8, 0, "IHDR: Truecolor alpha bit depth cannot be lower than 8 bits");
                 }
 
-                assert.strictEqual(chunk[10], 0, "IHDR: Unsupported compression method");
-                assert.strictEqual(chunk[11], 0, "IHDR: Unsupported filter method");
-                const interlace = chunk[12];
+                assert.strictEqual(chunk.data[10], 0, "IHDR: Unsupported compression method");
+                assert.strictEqual(chunk.data[11], 0, "IHDR: Unsupported filter method");
+                const interlace = chunk.data[12];
                 assert.strictEqual(interlace % 2, interlace, "IHDR: Unsupported interlace method");
 
                 json.width = width;
@@ -93,11 +86,11 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             }
             case "PLTE": {// Color palette chunk (Required for type 3 only)
                 json.palette ??= {};
-                chunk.forEach((x, i) => i % 3 == 0 ? json.palette![i / 3] = [x] : json.palette![Math.floor(i / 3)].push(x));
+                chunk.data.forEach((x, i) => i % 3 == 0 ? json.palette![i / 3] = [x] : json.palette![Math.floor(i / 3)].push(x));
                 break;
             }
             case "IDAT": { // Compressed image data chunk(s)
-                imageData = Buffer.concat([imageData, chunk]);
+                imageData = Buffer.concat([imageData, chunk.data]);
                 break;
             }
             case "IEND": { // Image ending chunk (After ALL chunks are parsed, parse the image data)
@@ -108,7 +101,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
 
                 imageData = zlib.inflateSync(imageData, { chunkSize:
                     Math.max(interlace ? zlib.constants.Z_DEFAULT_CHUNK : (bits.byteWidth(width) + 1) * height, zlib.constants.Z_MIN_CHUNK) });
-                if (!imageData || !imageData.length) throw new Error("IDAT: Invalid inflate response");
+                if (!imageData || !imageData.length) throw new SyntaxError("IDAT: Invalid inflate response");
 
                 const images = (interlace ? adam7(width, height).passes : [{
                     c: Array(width).fill(0).map((_, x) => x),
@@ -118,14 +111,12 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     ({ width: bits.byteWidth(w), height: h })), bpp).reverse(imageData));
 
                 const coords = images.flatMap(({ c, r }) => r.flatMap(y => c.map(x => !Number.isNaN(x) ? [x * channels, y] : [])))
-                    .flatMap(p => Array(p.length > 0 ? channels : 1).fill(0).map((_, b) => p.length > 0 ? [p[0] + b, p[1]] : p));
+                    .flatMap(p => Array(Math.max(p.length / 2 * channels, 1)).fill(0).map((_, b) => p.length > 0 ? [p[0] + b, p[1]] : p));
                 json.data = Array(height).fill(Array(width * channels).fill(0)).map((r: number[], y) =>
                     r.flatMap((_, x) => bitmap[coords.findIndex(z => z[0] == x && z[1] == y)]));
                 break;
             }
         }
-
-        o += cLength;
     }
 
     return json;

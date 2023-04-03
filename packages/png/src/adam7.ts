@@ -13,8 +13,8 @@ const pattern = [
 
 // Get info on each interlace pass of an image.
 export = function adam7(width: number, height: number) {
-    const cols = Array(width + 7 >>> 3).fill(0).map((_, x) => (x << 3) >>> 0);
-    const rows = Array(height + 7 >>> 3).fill(0).map((_, y) => (y << 3) >>> 0);
+    const cols = Array(Math.ceil(width / 8)).fill(0).map((_, x) => x * 8);
+    const rows = Array(Math.ceil(height / 8)).fill(0).map((_, y) => y * 8);
 
     return {
         passes: pattern.map(({ c, r }) => ({
