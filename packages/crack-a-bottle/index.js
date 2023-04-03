@@ -1,7 +1,11 @@
 const { png, PNGFilter, PNGType } = require("@crackabottle/png");
+const { qoi, QOIChunk, QOIType } = require("@crackabottle/qoi");
 
 module.exports = {
     png,
     PNGFilter,
-    PNGType
+    PNGType,
+    qoi,
+    QOIChunk,
+    QOIType
 }

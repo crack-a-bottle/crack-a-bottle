@@ -1,5 +1,5 @@
 {
-  "name": "@crackabottle/png",
+  "name": "@crackabottle/bmp",
   "version": "1.0.0",
   "description": "The Device-Independent Bitmap plugin for crack-a-bottle.",
   "main": "dist/index.js",
