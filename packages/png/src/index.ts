@@ -63,12 +63,16 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 switch (type) {
                     case PNGType.TRUECOLOR:
                         assert.strictEqual(depth % 8, 0, "IHDR: Truecolor bit depth cannot be lower than 8 bits");
+                        break;
                     case PNGType.INDEX_COLOR:
                         assert.strictEqual(depth % 16, depth, "IHDR: Indexed color bit depth cannot be higher than 8 bits");
+                        break;
                     case PNGType.GRAYSCALE_ALPHA:
                         assert.strictEqual(depth % 8, 0, "IHDR: Grayscale alpha bit depth cannot be lower than 8 bits");
+                        break;
                     case PNGType.TRUECOLOR_ALPHA:
                         assert.strictEqual(depth % 8, 0, "IHDR: Truecolor alpha bit depth cannot be lower than 8 bits");
+                        break;
                 }
 
                 assert.strictEqual(chunk.data[10], 0, "IHDR: Unsupported compression method");

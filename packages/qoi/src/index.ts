@@ -45,7 +45,6 @@ export function qoi(data: Buffer) {
     let c = [0, 0, 0, 255].slice(0, type);
     let o = 14;
     let l = 0;
-
     json.data = json.data.map(y => (y.map((_, x) => x).filter(x => x % type == 0).forEach(x => {
         if (l > 0) l--;
         else if (o < end) {
@@ -94,5 +93,6 @@ export function qoi(data: Buffer) {
 
         y = y.slice(0, x).concat(c, y.slice(x + type));
     }), y));
+
     return json;
 }
