@@ -1,0 +1,41 @@
+{
+  "name": "@crackabottle/png",
+  "version": "1.0.0",
+  "description": "The Device-Independent Bitmap plugin for crack-a-bottle.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "examples"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "prepack": "pnpm build",
+    "test": "node examples"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crack-a-bottle/crack-a-bottle.git"
+  },
+  "author": "hiimjustin000",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crack-a-bottle/crack-a-bottle/issues"
+  },
+  "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
+  "devDependencies": {
+    "@types/node": "^18.15.5",
+    "esbuild-plugin-version-injector": "^1.1.0",
+    "tsup": "^6.7.0",
+    "typescript": "^5.0.2"
+  }
+}

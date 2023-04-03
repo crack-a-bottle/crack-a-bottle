@@ -2,24 +2,24 @@
 
 // The interlace pattern used in the Adam7 algorithm.
 const pattern = [
-    { x: [0], y: [0] },
-    { x: [4], y: [0] },
-    { x: [0, 4], y: [4] },
-    { x: [2, 6], y: [0, 4] },
-    { x: [0, 2, 4, 6], y: [2, 6] },
-    { x: [1, 3, 5, 7], y: [0, 2, 4, 6] },
-    { x: [0, 1, 2, 3, 4, 5, 6, 7], y: [1, 3, 5, 7] }
+    { c: [0], r: [0] },
+    { c: [4], r: [0] },
+    { c: [0, 4], r: [4] },
+    { c: [2, 6], r: [0, 4] },
+    { c: [0, 2, 4, 6], r: [2, 6] },
+    { c: [1, 3, 5, 7], r: [0, 2, 4, 6] },
+    { c: [0, 1, 2, 3, 4, 5, 6, 7], r: [1, 3, 5, 7] }
 ]
 
 // Get info on each interlace pass of an image.
 export = function adam7(width: number, height: number) {
-    const passesX = Array(Math.ceil(width / 8)).fill(0).map((_, x) => x);
-    const passesY = Array(Math.ceil(height / 8)).fill(0).map((_, y) => y);
+    const cols = Array(width + 7 >>> 3).fill(0).map((_, x) => (x << 3) >>> 0);
+    const rows = Array(height + 7 >>> 3).fill(0).map((_, y) => (y << 3) >>> 0);
 
     return {
-        passes: pattern.map(({ x, y }) => ({
-            x: passesX.flatMap(c => x.map(w => w + c * 8).filter(w => w < width)),
-            y: passesY.flatMap(r => y.map(h => h + r * 8).filter(h => h < height))
-        })).filter(({ x, y }) => x.length > 0 && y.length > 0)
+        passes: pattern.map(({ c, r }) => ({
+            c: cols.flatMap(x => c.map(w => w + x).filter(w => w < width)),
+            r: rows.flatMap(y => r.map(h => h + y).filter(h => h < height))
+        })).filter(({ c, r }) => c.length > 0 && r.length > 0)
     }
 }

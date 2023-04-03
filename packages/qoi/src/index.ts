@@ -50,7 +50,7 @@ export function qoi(data: Buffer) {
         if (l > 0) l--;
         else if (o < end) {
             const px = data[o] & 63;
-            const chunk = data[o] <= 253 ? data[o] : data[o] & 192;
+            const chunk = data[o] & (data[o] > 253 ? 255 : 192);
             switch (chunk) {
                 case QOIChunk.RGB:
                     c[0] = data[++o];
@@ -61,8 +61,8 @@ export function qoi(data: Buffer) {
                     c[0] = data[++o];
                     c[1] = data[++o];
                     c[2] = data[++o];
-                    if (type == QOIType.RGBA) c[3] = data[++o];
-                    else o++;
+                    c[3] = type == QOIType.RGBA ? data[o + 1] : c[3];
+                    o++;
                     break;
                 case QOIChunk.INDEX:
                     c = colors[px].slice(0, type);
