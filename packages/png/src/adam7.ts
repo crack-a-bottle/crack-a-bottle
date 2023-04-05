@@ -1,6 +1,3 @@
-// Adam7 interlace algorithm (Implementing this was torturous, until it wasn't)
-
-// The interlace pattern used in the Adam7 algorithm.
 const pattern = [
     { c: [0], r: [0] },
     { c: [4], r: [0] },
@@ -11,7 +8,6 @@ const pattern = [
     { c: [0, 1, 2, 3, 4, 5, 6, 7], r: [1, 3, 5, 7] }
 ]
 
-// Get info on each interlace pass of an image.
 export = function adam7(width: number, height: number) {
     const cols = Array(Math.ceil(width / 8)).fill(0).map((_, x) => x * 8);
     const rows = Array(Math.ceil(height / 8)).fill(0).map((_, y) => y * 8);

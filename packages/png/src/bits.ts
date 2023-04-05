@@ -12,8 +12,7 @@ export = function bits({ channels, depth }: Record<"channels" | "depth", number>
                 i % 2 == 0 ? a.concat(x << 8) : (a[a.length - 1] |= x, a), []);
         },
         padWidth(width: number) {
-            const bitWidth = width * bpp;
-            return ((bitWidth + 7 & -8) - bitWidth) / depth;
+            return (8 - width * bpp % 8) / depth;
         }
     }
 }
