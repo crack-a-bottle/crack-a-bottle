@@ -73,14 +73,12 @@ export function qoi(data: Buffer) {
                         c[0] += (px & 3) - 2;
                         c[1] += (px >> 2 & 3) - 2;
                         c[2] += (px >> 4 & 3) - 2;
-                        c = c.map(i => i & 255);
                         break;
                     case QOIChunk.LUMA:
                         const px2 = data[++o];
                         c[0] += px + (px2 & 15) - 40;
                         c[1] += px - 32;
                         c[2] += (px2 >> 4 & 15) - 40;
-                        c = c.map(i => i & 255);
                         break;
                     case QOIChunk.RUN:
                         l = px;
