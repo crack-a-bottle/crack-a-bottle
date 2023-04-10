@@ -5,8 +5,8 @@ import bit from "./bits";
 import * as chunks from "./chunks";
 import filters from "./filter";
 
-export const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130);
-export const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10);
+const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130);
+const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10);
 
 export interface PNG {
     width: number;
@@ -114,3 +114,5 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
 
     return json;
 }
+png.END_SIGNATURE = END_SIGNATURE.toString("latin1");
+png.SIGNATURE = SIGNATURE.toString("latin1");

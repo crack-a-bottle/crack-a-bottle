@@ -1,7 +1,7 @@
 import * as assert from "assert";
 
-export const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 0, 0, 0, 1);
-export const SIGNATURE = Buffer.of(113, 111, 105, 102);
+const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 0, 0, 0, 1);
+const SIGNATURE = Buffer.of(113, 111, 105, 102);
 
 export interface QOI {
     width: number;
@@ -100,3 +100,5 @@ export function qoi(data: Buffer) {
 
     return json;
 }
+qoi.END_SIGNATURE = END_SIGNATURE.toString("latin1");
+qoi.SIGNATURE = SIGNATURE.toString("latin1");
