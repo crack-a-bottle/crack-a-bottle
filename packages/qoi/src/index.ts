@@ -26,8 +26,8 @@ export enum QOIType {
 }
 
 export function qoi(data: Buffer) {
-    assert.deepStrictEqual(SIGNATURE, data.subarray(0, 4), "Start signature not found");
-    assert.ok(data.includes(END_SIGNATURE), "End signature not found");
+    assert.deepStrictEqual(data.subarray(0, 4), SIGNATURE, "Start signature not found");
+    assert.notStrictEqual(data.indexOf(END_SIGNATURE), -1, "End signature not found");
     const json: QOI = { width: 0, height: 0, type: 3, colorspace: 0, data: [] };
 
     json.width = data.readUInt32BE(4);

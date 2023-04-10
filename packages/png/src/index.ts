@@ -37,8 +37,8 @@ const DEPTHS = [1, 2, 4, 8, 16];
 const TYPES = [0, 2, 3, 4, 6];
 
 export function png(data: Buffer, checkRedundancy: boolean = true) {
-    assert.deepStrictEqual(SIGNATURE, data.subarray(0, 8), "Start signature not found");
-    assert.ok(data.includes(END_SIGNATURE), "End signature not found");
+    assert.deepStrictEqual(data.subarray(0, 8), SIGNATURE, "Start signature not found");
+    assert.notStrictEqual(data.indexOf(END_SIGNATURE), -1, "End signature not found");
 
     const json: PNG = { width: 0, height: 0, depth: 0, type: 0, palette: undefined, data: [] };
     const misc = { interlace: false, channels: 0 };
