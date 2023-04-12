@@ -91,23 +91,24 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             case "IEND":
                 const { width, height, depth } = json;
                 const { interlace, channels } = misc;
+                const adam = adam7(width, height);
                 const bpp = { channels, depth };
                 const bits = bit(bpp);
-                const imageCoords = (interlace ? adam7(width, height).passes : [{
+                const images = (interlace ? adam.passes : [{
                     c: Array(width).fill(0).map((_, x) => x),
                     r: Array(height).fill(0).map((_, y) => y)
-                }]).map(({ c, r }) => ({ c: c.concat(Array(bits.padWidth(c.length)).fill(NaN)), r }));
-                const images = imageCoords.map(({ c, r }) => ({ width: bits.byteWidth(c.length), height: r.length }));
+                }]).map(({ c, r }) => ({ width: bits.byteWidth(c.length) + bits.padWidth(c.length), height: r.length }));
 
                 imageData = zlib.inflateSync(imageData, { chunkSize:
                     Math.max(images.reduce((a, x) => a + (x.width + 1) * x.height, 0), zlib.constants.Z_MIN_CHUNK) });
                 if (!imageData || !imageData.length) throw new SyntaxError("IDAT: Invalid inflate response");
                 const bitmap = bits.extract(filters(images, bpp).reverse(imageData));
 
-                const coords = imageCoords.flatMap(({ c, r }) => r.flatMap(y => c.map(x => !Number.isNaN(x) ? [x * channels, y] : [])))
-                    .flatMap(p => Array(Math.max(p.length / 2 * channels, 1)).fill(0).map((_, b) => p.length > 0 ? [p[0] + b, p[1]] : p));
-                json.data = Array(height).fill(Array(width * channels).fill(0)).map((r: number[], y) =>
-                    r.flatMap((_, x) => bitmap[coords.findIndex(z => z[0] == x && z[1] == y)]));
+                json.data = (interlace ? adam.interlace(bitmap, bpp) : bitmap).reduce((a, x, i) => {
+                    if (i % bits.padWidth(width)) a.push([]);
+                    a[a.length - 1].push(x);
+                    return a;
+                }, [] as number[][]);
                 break;
         }
     }
