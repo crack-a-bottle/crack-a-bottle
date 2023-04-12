@@ -115,5 +115,6 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
 
     return json;
 }
+
 png.END_SIGNATURE = END_SIGNATURE.toString("latin1");
 png.SIGNATURE = SIGNATURE.toString("latin1");

@@ -47,8 +47,8 @@ export function qoi(data: Buffer) {
     let o = 14;
     let l = 0;
     for (let y = 0; y < height; y++) {
-        const row = Array(width * type);
-        for (let x = 0; x < row.length; x += type) {
+        const row: number[] = [];
+        for (let x = 0; x < width * type; x += type) {
             if (l > 0) l--;
             else if (o < end) {
                 const px = data[o] & 63;
@@ -92,13 +92,14 @@ export function qoi(data: Buffer) {
                 o++;
             }
 
-            row.splice(x, type, ...c);
+            row.push(...c);
         }
 
-        json.data.splice(y, 1, row);
+        json.data.push(row);
     }
 
     return json;
 }
+
 qoi.END_SIGNATURE = END_SIGNATURE.toString("latin1");
 qoi.SIGNATURE = SIGNATURE.toString("latin1");
