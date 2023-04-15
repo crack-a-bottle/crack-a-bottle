@@ -9,14 +9,11 @@
   },
   "author": "hiimjustin000",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/crack-a-bottle/crack-a-bottle/issues"
-  },
-  "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
+  "homepage": "https://crackabottle.js.org",
   "devDependencies": {
-    "@types/node": "^18.15.9",
+    "@types/node": "^18.15.11",
     "tsup": "^6.7.0",
     "turbo": "^1.8.5",
-    "typescript": "^5.0.2"
+    "typescript": "^5.0.4"
   }
 }

@@ -14,11 +14,11 @@
     "access": "public"
   },
   "files": [
-    "dist",
-    "examples"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",
+    "docs": "typedoc src --out docs",
     "prepack": "pnpm build",
     "test": "node examples"
   },
