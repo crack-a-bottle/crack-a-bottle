@@ -13,7 +13,7 @@
   "devDependencies": {
     "@types/node": "^18.15.11",
     "tsup": "^6.7.0",
-    "turbo": "^1.8.5",
+    "turbo": "^1.9.1",
     "typescript": "^5.0.4"
   }
 }
