@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import { PNGFilter } from ".";
 
-export = function filters(images: Record<"width" | "height", number>[], { channels, depth }: Record<"channels" | "depth", number>) {
+export = function filters(images: Record<"width" | "height", number>[], channels: number, depth: number) {
     const empty = Buffer.of();
     const length = Math.max((depth >> 3) * channels, 1);
 

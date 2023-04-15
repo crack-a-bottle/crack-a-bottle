@@ -8,4 +8,4 @@ module.exports = {
     qoi,
     QOIChunk,
     QOIType
-}
+};

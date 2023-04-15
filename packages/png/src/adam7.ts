@@ -17,7 +17,7 @@ export = function adam7(width: number, height: number) {
             c: cols.flatMap(x => c.map(w => w + x).filter(w => w < width)),
             r: rows.flatMap(y => r.map(h => h + y).filter(h => h < height))
         })).filter(({ c, r }) => c.length > 0 && r.length > 0),
-        interlace(data: number[], { channels, depth }: Record<"channels" | "depth", number>) {
+        interlace(data: number[], channels: number, depth: number) {
             const padWidth = (8 - width * channels * depth % 8) % 8 / depth;
             const coords = this.passes
                 .map(({ c, r }) => ({ c: c.concat(Array(padWidth).fill(NaN)), r }))

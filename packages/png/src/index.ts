@@ -1,7 +1,8 @@
 import * as assert from "assert";
 import * as zlib from "zlib";
+const { Z_DEFAULT_CHUNK, Z_MIN_CHUNK } = zlib.constants;
 import adam7 from "./adam7";
-import bit from "./bits";
+import bits from "./bits";
 import * as chunks from "./chunks";
 import filters from "./filter";
 
@@ -14,6 +15,7 @@ export interface PNG {
     depth: number;
     type: PNGType;
     palette?: Record<number, number[]>;
+    misc?: Record<string, any>;
     data: number[][];
 }
 
@@ -40,16 +42,13 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
     assert.deepStrictEqual(data.subarray(0, 8), SIGNATURE, "Start signature not found");
     assert.notStrictEqual(data.indexOf(END_SIGNATURE), -1, "End signature not found");
 
-    const json: PNG = { width: 0, height: 0, depth: 0, type: 0, palette: undefined, data: [] };
+    const json: PNG = { width: 0, height: 0, depth: 0, type: 0, palette: undefined, misc: undefined, data: [] };
     const misc = { interlace: false, channels: 0 };
 
-    let imageData = Buffer.of();
-    for (const [o, chunk] of chunks.extract(data.subarray(8, data.indexOf(END_SIGNATURE) + 12), checkRedundancy).entries()) {
+    let idat = Buffer.of();
+    for (const chunk of chunks.extract(data.subarray(8, data.indexOf(END_SIGNATURE) + 12), checkRedundancy)) {
         switch (chunk.type) {
             case "IHDR":
-                assert.strictEqual(o, 0, "IHDR: Header chunk cannot be after another chunk");
-                assert.strictEqual(chunk.data.length, 13, "IHDR: Header chunk must be 13 bytes long");
-
                 json.width = chunk.data.readUInt32BE(0);
                 assert.notStrictEqual(json.width, 0, "IHDR: Image width cannot be less than one");
                 json.height = chunk.data.readUInt32BE(4);
@@ -85,29 +84,142 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 json.palette ??= {};
                 chunk.data.forEach((x, i) => i % 3 == 0 ? json.palette![i / 3] = [x] : json.palette![Math.floor(i / 3)].push(x));
                 break;
+            case "bKGD":
+                json.misc ??= {};
+                switch (json.type) {
+                    case PNGType.GRAYSCALE:
+                        json.misc.bKGD = chunk.data.readUInt16BE(0);
+                        break;
+                    case PNGType.TRUECOLOR:
+                        json.misc.bKGD = [chunk.data.readUInt16BE(0), chunk.data.readUInt16BE(2), chunk.data.readUInt16BE(4)];
+                        break;
+                    case PNGType.INDEX_COLOR:
+                        json.misc.bKGD = chunk.data[0];
+                        break;
+                }
+                break;
+            case "cHRM":
+                json.misc ??= {};
+                json.misc.cHRM = {
+                    white: { x: chunk.data.readUInt32BE(0) / 100000, y: chunk.data.readUInt32BE(4) / 100000 },
+                    red: { x: chunk.data.readUInt32BE(8) / 100000, y: chunk.data.readUInt32BE(12) / 100000 },
+                    green: { x: chunk.data.readUInt32BE(16) / 100000, y: chunk.data.readUInt32BE(20) / 100000 },
+                    blue: { x: chunk.data.readUInt32BE(24) / 100000, y: chunk.data.readUInt32BE(28) / 100000 }
+                };
+                break;
+            case "gAMA":
+                json.misc ??= {};
+                json.misc.gAMA = chunk.data.readUInt32BE(0) / 100000;
+                break;
+            case "hIST":
+                json.misc ??= {};
+                json.misc.hIST ??= {};
+                chunk.data.reduce((a, x, i) => i % 2 == 0 ? a.concat(x << 8) : (a[a.length - 1] |= x, a), [] as number[])
+                    .forEach((x, i) => i % 3 == 0 ? json.misc!.hIST[i / 3] = [x] : json.misc!.hIST[Math.floor(i / 3)].push(x));
+                break;
+            case "pHYs":
+                json.misc ??= {};
+                json.misc.pHYs = { x: chunk.data.readUInt32BE(0), y: chunk.data.readUInt32BE(4), unit: chunk.data[8] };
+                break;
+            case "sBIT":
+                json.misc ??= {};
+                switch (json.type) {
+                    case PNGType.GRAYSCALE:
+                        json.misc.sBIT = chunk.data[0];
+                        break;
+                    case PNGType.TRUECOLOR:
+                    case PNGType.INDEX_COLOR:
+                        json.misc.sBIT = [chunk.data[0], chunk.data[1], chunk.data[2]];
+                        break;
+                    case PNGType.GRAYSCALE_ALPHA:
+                        json.misc.sBIT = [chunk.data[0], chunk.data[1]];
+                        break;
+                    case PNGType.TRUECOLOR_ALPHA:
+                        json.misc.sBIT = [chunk.data[0], chunk.data[1], chunk.data[2], chunk.data[3]];
+                        break;
+                }
+                break;
+            case "sPLT":
+                json.misc ??= {};
+                json.misc.sPLT ??= {};
+                const name = chunk.data.toString("latin1").split("\0")[0];
+                switch (chunk.data[name.length + 1]) {
+                    case 8:
+                        chunk.data.subarray(name.length + 2)
+                            .reduce((a, x, i) => i % 6 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
+                            .forEach((x, i) => json.misc!.sPLT[i] = [x[0], x[1], x[2], x[3], x[4] << 8 | x[5]]);
+                        break;
+                    case 16:
+                        chunk.data.subarray(name.length + 2)
+                            .reduce((a, x, i) => i % 10 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
+                            .forEach((x, i) => json.misc!.sPLT[i] = [x[0] << 8 | x[1], x[2] << 8 | x[3], x[4] << 8 | x[5], x[6] << 8 | x[7], x[8] << 8 | x[9]]);
+                        break;
+                }
+                break;
+            case "sRGB":
+                json.misc ??= {};
+                json.misc.sRGB = chunk.data[0];
+                break;
+            case "tEXt":
+                json.misc ??= {};
+                json.misc.tEXt ??= {};
+                const text = chunk.data.toString("latin1").split("\0");
+                json.misc.tEXt[text[0]] = text[1];
+                break;
+            case "tIME":
+                json.misc ??= {};
+                json.misc.tIME = `${[
+                    chunk.data.readUint16BE(0).toString(10),
+                    chunk.data[2].toString(10).padStart(2, "0"),
+                    chunk.data[3].toString(10).padStart(2, "0")
+                ].join("-")}T${[
+                    chunk.data[4].toString(10).padStart(2, "0"),
+                    chunk.data[5].toString(10).padStart(2, "0"),
+                    chunk.data[6].toString(10).padStart(2, "0")
+                ].join(":")}+00:00`;
+                break;
+            case "tRNS":
+                json.misc ??= {};
+                switch (json.type) {
+                    case PNGType.GRAYSCALE:
+                        json.misc.tRNS = chunk.data.readUInt16BE(0);
+                        break;
+                    case PNGType.TRUECOLOR:
+                        json.misc.tRNS = [chunk.data.readUInt16BE(0), chunk.data.readUInt16BE(2), chunk.data.readUInt16BE(4)];
+                        break;
+                    case PNGType.INDEX_COLOR:
+                        json.misc.tRNS = chunk.data.toJSON().data;
+                        break;
+                }
+                break;
+            case "zTXt":
+                json.misc ??= {};
+                json.misc.zTXt ??= {};
+                const ztext = chunk.data.toString("latin1").split("\0");
+                json.misc.zTXt[ztext[0]] = zlib.inflateSync(chunk.data.subarray(ztext[0].length + 2)).toString("latin1");
+                break;
             case "IDAT":
-                imageData = Buffer.concat([imageData, chunk.data]);
+                idat = Buffer.concat([idat, chunk.data]);
                 break;
             case "IEND":
                 const { width, height, depth } = json;
                 const { interlace, channels } = misc;
                 const adam = adam7(width, height);
-                const bpp = { channels, depth };
-                const bits = bit(bpp);
-                const images = (interlace ? adam.passes : [{
-                    c: Array(width).fill(0).map((_, x) => x),
-                    r: Array(height).fill(0).map((_, y) => y)
-                }]).map(({ c, r }) => ({ width: bits.byteWidth(c.length) + bits.padWidth(c.length), height: r.length }));
+                const bit = bits(channels, depth);
+                const byteWidth = bit.byteWidth(width);
+                const padWidth = bit.padWidth(width);
 
-                imageData = zlib.inflateSync(imageData, { chunkSize:
-                    Math.max(images.reduce((a, x) => a + (x.width + 1) * x.height, 0), zlib.constants.Z_MIN_CHUNK) });
-                if (!imageData || !imageData.length) throw new SyntaxError("IDAT: Invalid inflate response");
-                const bitmap = bits.extract(filters(images, bpp).reverse(imageData));
+                idat = zlib.inflateSync(idat, {
+                    chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((byteWidth + 1) * height, Z_MIN_CHUNK)
+                });
+                if (!idat || !idat.length) throw new SyntaxError("IDAT: Invalid inflate response");
+                const bitmap = bit.extract(filters(interlace ?
+                    adam.passes.map(({ c, r }) => ({ width: bit.byteWidth(c.length) + bit.padWidth(c.length), height: r.length })) :
+                    [{ width: byteWidth + padWidth, height }], channels, depth).reverse(idat));
 
-                json.data = (interlace ? adam.interlace(bitmap, bpp) : bitmap).reduce((a, x, i) => {
-                    if (i % bits.padWidth(width)) a.push([]);
-                    a[a.length - 1].push(x);
-                    return a;
+                json.data = (interlace ? adam.interlace(bitmap, channels, depth) : bitmap).reduce((a, x, i) => {
+                    if (i % padWidth) a.push([]);
+                    return a[a.length - 1].push(x), a;
                 }, [] as number[][]);
                 break;
         }
