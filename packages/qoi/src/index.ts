@@ -1,7 +1,7 @@
 import * as assert from "assert";
 
-const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 0, 0, 0, 1);
-const SIGNATURE = Buffer.of(113, 111, 105, 102);
+const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 0, 0, 0, 1); // 00 00 00 00 00 00 00 01
+const SIGNATURE = Buffer.of(113, 111, 105, 102); // 71 6F 69 66
 
 export interface QOI {
     width: number;
@@ -46,9 +46,8 @@ export function qoi(data: Buffer) {
     let c = [0, 0, 0, 255].slice(0, type);
     let o = 14;
     let l = 0;
-    for (let y = 0; y < height; y++) {
-        const row: number[] = [];
-        for (let x = 0; x < width * type; x += type) {
+    Array(height).fill(0).forEach(() => {
+        json.data.push(Array(width).fill(0).flatMap(() => {
             if (l > 0) l--;
             else if (o < end) {
                 const px = data[o] & 63;
@@ -92,11 +91,9 @@ export function qoi(data: Buffer) {
                 o++;
             }
 
-            row.push(...c);
-        }
-
-        json.data.push(row);
-    }
+            return c;
+        }));
+    });
 
     return json;
 }

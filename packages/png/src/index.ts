@@ -2,12 +2,12 @@ import * as assert from "assert";
 import * as zlib from "zlib";
 const { Z_DEFAULT_CHUNK, Z_MIN_CHUNK } = zlib.constants;
 import adam7 from "./adam7";
-import bits from "./bits";
+import { bits } from "./bits";
 import * as chunks from "./chunks";
 import filters from "./filter";
 
-const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130);
-const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10);
+const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130); // 00 00 00 49 45 4E 44 AE 42 60 82
+const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10); // 89 50 4E 47 0D 0A 1A 0A
 
 export interface PNG {
     width: number;
@@ -15,7 +15,20 @@ export interface PNG {
     depth: number;
     type: PNGType;
     palette?: Record<number, number[]>;
-    misc?: Record<string, any>;
+    misc?: {
+        bKGD?: number | number[];
+        cHRM?: Record<"white" | "red" | "green" | "blue", number[]>;
+        gAMA?: number;
+        hIST?: Record<number, number[]>;
+        pHYs?: Record<"x" | "y" | "unit", number>;
+        sBIT?: number | number[];
+        sPLT?: Record<string, Record<number, number[]>>;
+        sRGB?: number;
+        tEXt?: Record<string, string>;
+        tIME?: string;
+        tRNS?: number | number[];
+        zTXt?: Record<string, string>;
+    }
     data: number[][];
 }
 
@@ -101,10 +114,10 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             case "cHRM":
                 json.misc ??= {};
                 json.misc.cHRM = {
-                    white: { x: chunk.data.readUInt32BE(0) / 100000, y: chunk.data.readUInt32BE(4) / 100000 },
-                    red: { x: chunk.data.readUInt32BE(8) / 100000, y: chunk.data.readUInt32BE(12) / 100000 },
-                    green: { x: chunk.data.readUInt32BE(16) / 100000, y: chunk.data.readUInt32BE(20) / 100000 },
-                    blue: { x: chunk.data.readUInt32BE(24) / 100000, y: chunk.data.readUInt32BE(28) / 100000 }
+                    white: [ chunk.data.readUInt32BE(0) / 100000, chunk.data.readUInt32BE(4) / 100000 ],
+                    red: [ chunk.data.readUInt32BE(8) / 100000, chunk.data.readUInt32BE(12) / 100000 ],
+                    green: [ chunk.data.readUInt32BE(16) / 100000, chunk.data.readUInt32BE(20) / 100000 ],
+                    blue: [ chunk.data.readUInt32BE(24) / 100000, chunk.data.readUInt32BE(28) / 100000 ]
                 };
                 break;
             case "gAMA":
@@ -115,7 +128,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 json.misc ??= {};
                 json.misc.hIST ??= {};
                 chunk.data.reduce((a, x, i) => i % 2 == 0 ? a.concat(x << 8) : (a[a.length - 1] |= x, a), [] as number[])
-                    .forEach((x, i) => i % 3 == 0 ? json.misc!.hIST[i / 3] = [x] : json.misc!.hIST[Math.floor(i / 3)].push(x));
+                    .forEach((x, i) => i % 3 == 0 ? json.misc!.hIST![i / 3] = [x] : json.misc!.hIST![Math.floor(i / 3)].push(x));
                 break;
             case "pHYs":
                 json.misc ??= {};
@@ -143,17 +156,18 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 json.misc ??= {};
                 json.misc.sPLT ??= {};
                 const name = chunk.data.toString("latin1").split("\0")[0];
+                json.misc.sPLT[name] = {};
                 switch (chunk.data[name.length + 1]) {
                     case 8:
                         chunk.data.subarray(name.length + 2)
                             .reduce((a, x, i) => i % 6 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
-                            .forEach((x, i) => json.misc!.sPLT[i] =
+                            .forEach((x, i) => json.misc!.sPLT![name][i] =
                                 [x[0], x[1], x[2], x[3], x[4] << 8 | x[5]]);
                         break;
                     case 16:
                         chunk.data.subarray(name.length + 2)
                             .reduce((a, x, i) => i % 10 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
-                            .forEach((x, i) => json.misc!.sPLT[i] =
+                            .forEach((x, i) => json.misc!.sPLT![name][i] =
                                 [x[0] << 8 | x[1], x[2] << 8 | x[3], x[4] << 8 | x[5], x[6] << 8 | x[7], x[8] << 8 | x[9]]);
                         break;
                 }
@@ -206,21 +220,21 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             case "IEND":
                 const { width, height, depth } = json;
                 const { interlace, channels } = misc;
-                const adam = adam7(width, height);
+                const adam = interlace ? adam7(width, height) : {
+                    passes: [{ c: Array(width), r: Array(height) }],
+                    interlace: (x: number[]) => x
+                }
                 const bit = bits(channels, depth);
-                const byteWidth = bit.byteWidth(width);
-                const padWidth = width * channels + bit.padWidth(width);
+                const images = adam.passes.map(({ c, r }) => ({ width: c.length, height: r.length }));
 
                 idat = zlib.inflateSync(idat, {
-                    chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((byteWidth + 1) * height, Z_MIN_CHUNK)
+                    chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((bit.byteWidth(width) + 1) * height, Z_MIN_CHUNK)
                 });
                 if (!idat || !idat.length) throw new SyntaxError("IDAT: Invalid inflate response");
-                const bitmap = bit.extract(filters(interlace ?
-                    adam.passes.map(({ c, r }) => ({ width: bit.byteWidth(c.length), height: r.length })) :
-                    [{ width: byteWidth, height }], channels, depth).reverse(idat));
+                const bitmap = bit.extract(filters(images, bit).reverse(idat), images);
 
-                json.data = (interlace ? adam.interlace(bitmap, channels, depth) : bitmap).reduce((a, x, i) => {
-                    if (i % padWidth == 0) a.push([]);
+                json.data = adam.interlace(bitmap, channels, depth).reduce((a, x, i) => {
+                    if (i % width == 0) a.push([]);
                     return a[a.length - 1].push(x), a;
                 }, [] as number[][]);
                 break;

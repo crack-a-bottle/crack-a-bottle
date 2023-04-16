@@ -1,9 +1,10 @@
 import * as assert from "assert";
 import { PNGFilter } from ".";
+import type { Bits } from "./bits";
 
-export = function filters(images: Record<"width" | "height", number>[], channels: number, depth: number) {
+export = function filters(images: Record<"width" | "height", number>[], bit: Bits) {
     const empty = Buffer.of();
-    const length = Math.max((depth >> 3) * channels, 1);
+    const length = Math.max((bit.depth >> 3) * bit.channels, 1);
 
     function reverseFilter(filter: PNGFilter, previous: number[]): (x: number, i: number, r: number[]) => number {
         assert.strictEqual(filter % 5, filter, "IDAT: Unrecognized filter type");
@@ -56,7 +57,7 @@ export = function filters(images: Record<"width" | "height", number>[], channels
             let o = 0;
             return Buffer.from(images.flatMap(({ width, height }) =>
                 Array(height).fill([]).flatMap((_, i, r) => {
-                    const [ f, ...l ] = data.subarray(o, o += width + 1);
+                    const [ f, ...l ] = data.subarray(o, o += bit.byteWidth(width) + 1);
                     return r[i] = l.map(reverseFilter(f, r[i - 1] ?? empty));
                 })));
         }
