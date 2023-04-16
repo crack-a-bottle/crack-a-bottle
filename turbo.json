@@ -1,11 +1,16 @@
 {
-    "$schema": "https://turbo.build/schema.json",
-    "globalDependencies": ["yarn.lock"],
-    "pipeline": {
-        "build": {
-            "dependsOn": ["^build"],
-            "inputs": ["../../tsconfig.json", "../../tsup.config.ts", "src/**/*.ts", "tsconfig.json", "tsup.config.ts"],
-            "outputs": ["dist/**"]
-        }
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["yarn.lock"],
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["../../tsconfig.json", "../../tsup.config.ts", "src/**/*.ts", "tsconfig.json", "tsup.config.ts"],
+      "outputs": ["dist/**"]
+    },
+    "docs": {
+      "dependsOn": ["^docs"],
+      "inputs": ["src/**/*.ts", "tsconfig.json", "../../tsconfig.json"],
+      "outputs": ["docs/**"]
     }
+  }
 }

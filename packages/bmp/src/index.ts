@@ -1,9 +1,14 @@
 import * as assert from "assert";
 
-export const SIGNATURE = Buffer.of(66, 77);
+const SIGNATURE = Buffer.of(66, 77);
 
-export function bmp(data: Buffer) {
+export interface BMP {
+    data: number[][];
+}
+
+export function bmp(data: Buffer): { data: number[][] }  {
     assert.deepStrictEqual(SIGNATURE, data.subarray(0, 2), "Start signature not found");
 
-    return [[0, 0, 0, 255]];
+    return { data: [] };
 }
+bmp.SIGNATURE = SIGNATURE.toString("latin1");

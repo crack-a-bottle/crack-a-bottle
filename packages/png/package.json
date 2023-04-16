@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "docs": "typedoc src --out docs",
+    "docs": "typedoc --options typedoc.json",
     "prepack": "pnpm build",
     "test": "node examples"
   },
@@ -31,7 +31,7 @@
   "bugs": {
     "url": "https://github.com/crack-a-bottle/crack-a-bottle/issues"
   },
-  "homepage": "https://github.com/crack-a-bottle/crack-a-bottle#readme",
+  "homepage": "https://crackabottle.js.org",
   "devDependencies": {
     "@types/node": "^18.15.11",
     "esbuild-plugin-version-injector": "^1.1.0",
