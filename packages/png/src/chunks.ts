@@ -1,4 +1,4 @@
-import assert from "assert";
+import * as assert from "assert";
 
 const table = Array(256).fill(Array(8).fill(0)).map((x: number[], i) => x.reduce(c => ((c & 1) * 3988292384) ^ (c >>> 1), i) >>> 0);
 

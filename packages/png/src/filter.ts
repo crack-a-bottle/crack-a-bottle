@@ -49,6 +49,8 @@ export = function filters(images: Record<"width" | "height", number>[], bit: Bit
                             return r[i] = x + c & 255;
                     }
                 }
+            default:
+                return () => 0;
         }
     }
 

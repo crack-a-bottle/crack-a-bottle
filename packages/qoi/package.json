@@ -36,6 +36,7 @@
     "@types/node": "^18.15.11",
     "esbuild-plugin-version-injector": "^1.1.0",
     "tsup": "^6.7.0",
+    "typedoc": "^0.24.3",
     "typescript": "^5.0.4"
   }
 }

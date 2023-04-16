@@ -1,9 +1,4 @@
 {
-  "references": [
-    { "path": "./packages/bmp" },
-    { "path": "./packages/png" },
-    { "path": "./packages/qoi" }
-  ],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
 
