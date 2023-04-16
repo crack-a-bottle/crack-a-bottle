@@ -1,0 +1,81 @@
+{
+  "width": 6,
+  "height": 6,
+  "depth": 2,
+  "type": 3,
+  "palette": {
+    "0": [
+      0,
+      255,
+      0
+    ],
+    "1": [
+      0,
+      119,
+      255
+    ],
+    "2": [
+      255,
+      0,
+      255
+    ]
+  },
+  "misc": {
+    "gAMA": 1,
+    "sBIT": [
+      4,
+      4,
+      4
+    ]
+  },
+  "data": [
+    [
+      2,
+      1,
+      2,
+      1,
+      1,
+      2
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      1,
+      0,
+      2,
+      0,
+      2,
+      1
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ],
+    [
+      2,
+      2,
+      0,
+      2,
+      0,
+      2
+    ],
+    [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  ]
+}
