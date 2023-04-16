@@ -3,6 +3,9 @@
   "height": 32,
   "depth": 8,
   "type": 0,
+  "misc": {
+    "gAMA": 1
+  },
   "data": [
     [
       0,

@@ -207,14 +207,14 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 const adam = adam7(width, height);
                 const bit = bits(channels, depth);
                 const byteWidth = bit.byteWidth(width);
-                const padWidth = width + bit.padWidth(width);
+                const padWidth = width * channels + bit.padWidth(width);
 
                 idat = zlib.inflateSync(idat, {
                     chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((byteWidth + 1) * height, Z_MIN_CHUNK)
                 });
                 if (!idat || !idat.length) throw new SyntaxError("IDAT: Invalid inflate response");
                 const bitmap = bit.extract(filters(interlace ?
-                    adam.passes.map(({ c, r }) => ({ width: bit.byteWidth(c.length) + bit.padWidth(c.length), height: r.length })) :
+                    adam.passes.map(({ c, r }) => ({ width: bit.byteWidth(c.length), height: r.length })) :
                     [{ width: byteWidth, height }], channels, depth).reverse(idat));
 
                 json.data = (interlace ? adam.interlace(bitmap, channels, depth) : bitmap).reduce((a, x, i) => {
