@@ -14,8 +14,8 @@ importers:
         specifier: ^1.9.1
         version: 1.9.1
       typedoc:
-        specifier: ^0.24.3
-        version: 0.24.3(typescript@5.0.4)
+        specifier: ^0.24.4
+        version: 0.24.4(typescript@5.0.4)
       typescript:
         specifier: ^5.0.4
         version: 5.0.4
@@ -31,9 +31,6 @@ importers:
       tsup:
         specifier: ^6.7.0
         version: 6.7.0(typescript@5.0.4)
-      typedoc:
-        specifier: ^0.24.3
-        version: 0.24.3(typescript@5.0.4)
       typescript:
         specifier: ^5.0.4
         version: 5.0.4
@@ -53,6 +50,9 @@ importers:
       '@types/node':
         specifier: ^18.15.5
         version: 18.15.5
+      typedoc:
+        specifier: ^0.24.4
+        version: 0.24.4(typescript@5.0.4)
 
   packages/png:
     devDependencies:
@@ -65,9 +65,6 @@ importers:
       tsup:
         specifier: ^6.7.0
         version: 6.7.0(typescript@5.0.4)
-      typedoc:
-        specifier: ^0.24.3
-        version: 0.24.3(typescript@5.0.4)
       typescript:
         specifier: ^5.0.4
         version: 5.0.4
@@ -83,9 +80,6 @@ importers:
       tsup:
         specifier: ^6.7.0
         version: 6.7.0(typescript@5.0.4)
-      typedoc:
-        specifier: ^0.24.3
-        version: 0.24.3(typescript@5.0.4)
       typescript:
         specifier: ^5.0.4
         version: 5.0.4
@@ -833,8 +827,8 @@ packages:
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
     dev: true
 
-  /rollup@3.20.2:
-    resolution: {integrity: sha512-3zwkBQl7Ai7MFYQE0y1MeQ15+9jsi7XxfrqwTb/9EK8D9C9+//EBR4M+CuA1KODRaNbFez/lWxA5vhEGZp4MUg==}
+  /rollup@3.20.3:
+    resolution: {integrity: sha512-u6/O1X42CAZ79rbk+smyONJQLTpwFBL7InpRa/AVWia5lq60w5J/PUsVHCOgSolN0X9R2GjQ41fZm3x28Hk1lA==}
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
     hasBin: true
     optionalDependencies:
@@ -964,7 +958,7 @@ packages:
       joycon: 3.1.1
       postcss-load-config: 3.1.4
       resolve-from: 5.0.0
-      rollup: 3.20.2
+      rollup: 3.20.3
       source-map: 0.8.0-beta.0
       sucrase: 3.32.0
       tree-kill: 1.2.2
@@ -1035,8 +1029,8 @@ packages:
       turbo-windows-arm64: 1.9.1
     dev: true
 
-  /typedoc@0.24.3(typescript@5.0.4):
-    resolution: {integrity: sha512-WvKKVWb+1X5KVtq8hmeby3LfVxIT1GCIKp5yYum8kZuhJJIQA5EgmdF+SBDs9oLAg2IDm8/mTI+80A9paKdKpA==}
+  /typedoc@0.24.4(typescript@5.0.4):
+    resolution: {integrity: sha512-vQuliyGhJEGeKzzCFHbkS3m0gHoIL6cfr0fHf6eX658iGELtq2J9mWe0b+X5McEYgFoMuHFt5Py3Zug6Sxjn/Q==}
     engines: {node: '>= 14.14'}
     hasBin: true
     peerDependencies:

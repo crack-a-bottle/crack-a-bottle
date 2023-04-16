@@ -17,7 +17,7 @@
     "@types/node": "^18.15.11",
     "tsup": "^6.7.0",
     "turbo": "^1.9.1",
-    "typedoc": "^0.24.3",
+    "typedoc": "^0.24.4",
     "typescript": "^5.0.4"
   }
 }
