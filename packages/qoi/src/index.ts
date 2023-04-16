@@ -41,6 +41,7 @@ export function qoi(data: Buffer) {
 
     const { width, height, type } = json;
     const colors = Array(64).fill([0, 0, 0, 0].slice(0, type));
+    colors[53] = [0, 0, 0, 255].slice(0, type);
     const end = data.indexOf(END_SIGNATURE);
 
     let c = [0, 0, 0, 255].slice(0, type);
@@ -69,15 +70,15 @@ export function qoi(data: Buffer) {
                         c = colors[px].slice(0, type);
                         break;
                     case QOIChunk.DIFF:
-                        c[0] += (px & 3) - 2;
+                        c[0] += (px >> 4 & 3) - 2;
                         c[1] += (px >> 2 & 3) - 2;
-                        c[2] += (px >> 4 & 3) - 2;
+                        c[2] += (px & 3) - 2;
                         break;
                     case QOIChunk.LUMA:
                         const px2 = data[++o];
-                        c[0] += px + (px2 & 15) - 40;
+                        c[0] += px - 32 + ((px2 >> 4 & 15) - 8);
                         c[1] += px - 32;
-                        c[2] += (px2 >> 4 & 15) - 40;
+                        c[2] += px - 32 + ((px2 & 15) - 8);
                         break;
                     case QOIChunk.RUN:
                         l = px;
