@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsup",
-    "docs": "typedoc --options typedoc.json",
+    "docs": "typedoc",
     "prepack": "pnpm build",
     "test": "node examples"
   },

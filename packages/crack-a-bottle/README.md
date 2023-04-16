@@ -3,7 +3,7 @@ High-quality image cracking/parsing tools.
 
 ## Installation
 ```bash
-npm install crack-a-bottle
+$ npm install crack-a-bottle
 ```
 
 ## Importing

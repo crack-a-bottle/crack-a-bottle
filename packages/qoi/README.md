@@ -3,7 +3,7 @@ The Quite OK Image plugin for crack-a-bottle.
 
 ## Installation
 ```bash
-npm install @crackabottle/qoi
+$ npm install @crackabottle/qoi
 ```
 
 ## Constants

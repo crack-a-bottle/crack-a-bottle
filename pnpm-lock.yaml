@@ -34,6 +34,9 @@ importers:
 
   packages/crack-a-bottle:
     dependencies:
+      '@crackabottle/bmp':
+        specifier: workspace:*
+        version: link:../bmp
       '@crackabottle/png':
         specifier: workspace:*
         version: link:../png

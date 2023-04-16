@@ -3,7 +3,7 @@ The Portable Network Graphics plugin for crack-a-bottle.
 
 ## Installation
 ```bash
-npm install @crackabottle/png
+$ npm install @crackabottle/png
 ```
 
 ## Constants

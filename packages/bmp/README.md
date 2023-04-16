@@ -3,7 +3,7 @@ The Device-Independent Bitmap plugin for crack-a-bottle.
 
 ## Installation
 ```bash
-npm install @crackabottle/bmp
+$ npm install @crackabottle/bmp
 ```
 
 ## Constants

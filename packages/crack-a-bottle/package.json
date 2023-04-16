@@ -24,6 +24,7 @@
     "@types/node": "^18.15.5"
   },
   "dependencies": {
+    "@crackabottle/bmp": "workspace:*",
     "@crackabottle/png": "workspace:*",
     "@crackabottle/qoi": "workspace:*"
   }
