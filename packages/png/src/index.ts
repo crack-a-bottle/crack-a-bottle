@@ -147,12 +147,14 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     case 8:
                         chunk.data.subarray(name.length + 2)
                             .reduce((a, x, i) => i % 6 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
-                            .forEach((x, i) => json.misc!.sPLT[i] = [x[0], x[1], x[2], x[3], x[4] << 8 | x[5]]);
+                            .forEach((x, i) => json.misc!.sPLT[i] =
+                                [x[0], x[1], x[2], x[3], x[4] << 8 | x[5]]);
                         break;
                     case 16:
                         chunk.data.subarray(name.length + 2)
                             .reduce((a, x, i) => i % 10 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
-                            .forEach((x, i) => json.misc!.sPLT[i] = [x[0] << 8 | x[1], x[2] << 8 | x[3], x[4] << 8 | x[5], x[6] << 8 | x[7], x[8] << 8 | x[9]]);
+                            .forEach((x, i) => json.misc!.sPLT[i] =
+                                [x[0] << 8 | x[1], x[2] << 8 | x[3], x[4] << 8 | x[5], x[6] << 8 | x[7], x[8] << 8 | x[9]]);
                         break;
                 }
                 break;
