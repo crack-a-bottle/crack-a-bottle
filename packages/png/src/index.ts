@@ -231,10 +231,11 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((bit.byteWidth(width) + 1) * height, Z_MIN_CHUNK)
                 });
                 if (!idat || !idat.length) throw new SyntaxError("IDAT: Invalid inflate response");
-                const bitmap = bit.extract(filters(images, bit).reverse(idat), images);
+                const sampleWidth = width * channels;
 
-                json.data = adam.interlace(bitmap, channels, depth).reduce((a, x, i) => {
-                    if (i % width == 0) a.push([]);
+                json.data = adam.interlace(bit.extract(filters(images, bit).reverse(idat), images),
+                    channels, depth).reduce((a, x, i) => {
+                    if (i % sampleWidth == 0) a.push([]);
                     return a[a.length - 1].push(x), a;
                 }, [] as number[][]);
                 break;

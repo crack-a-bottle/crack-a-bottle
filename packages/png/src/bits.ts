@@ -18,10 +18,11 @@ export function bits(channels: number, depth: number): Bits {
             const max = 2 ** depth - 1;
             if (depth <= 8) {
                 const result = data.reduce((a, x) => a.concat(bitArray.map(y => (x >> y) & max)), [] as number[]);
+                let o = 0;
                 for (const { width, height } of images) {
                     const padWidth = (8 - width * bpp % 8) % 8 / depth;
                     for (let i = 0; i < height; i++) {
-                        result.splice((i + 1) * width * channels, padWidth);
+                        result.splice(o += width * channels, padWidth);
                     }
                 }
                 return result;
