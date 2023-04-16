@@ -207,7 +207,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 const adam = adam7(width, height);
                 const bit = bits(channels, depth);
                 const byteWidth = bit.byteWidth(width);
-                const padWidth = bit.padWidth(width);
+                const padWidth = width + bit.padWidth(width);
 
                 idat = zlib.inflateSync(idat, {
                     chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((byteWidth + 1) * height, Z_MIN_CHUNK)
@@ -218,7 +218,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     [{ width: byteWidth, height }], channels, depth).reverse(idat));
 
                 json.data = (interlace ? adam.interlace(bitmap, channels, depth) : bitmap).reduce((a, x, i) => {
-                    if (i % padWidth) a.push([]);
+                    if (i % padWidth == 0) a.push([]);
                     return a[a.length - 1].push(x), a;
                 }, [] as number[][]);
                 break;
