@@ -225,16 +225,15 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     interlace: (x: number[]) => x
                 }
                 const bit = bits(channels, depth);
-                const images = adam.passes.map(({ c, r }) => ({ width: c.length, height: r.length }));
 
                 idat = zlib.inflateSync(idat, {
                     chunkSize: interlace ? Z_DEFAULT_CHUNK : Math.max((bit.byteWidth(width) + 1) * height, Z_MIN_CHUNK)
                 });
                 if (!idat || !idat.length) throw new SyntaxError("IDAT: Invalid inflate response");
-                const sampleWidth = width * channels;
 
-                json.data = adam.interlace(bit.extract(filters(images, bit).reverse(idat), images),
-                    channels, depth).reduce((a, x, i) => {
+                const sampleWidth = width * channels;
+                json.data = adam.interlace(filters(adam.passes.map(({ c, r }) => ({ width: c.length, height: r.length })),
+                    bit).reverse(idat), channels).reduce((a, x, i) => {
                     if (i % sampleWidth == 0) a.push([]);
                     return a[a.length - 1].push(x), a;
                 }, [] as number[][]);

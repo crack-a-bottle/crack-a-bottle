@@ -54,12 +54,12 @@ export = function filters(images: Record<"width" | "height", number>[], bit: Bit
 
     return {
         reverse(data: Buffer) {
-            let o = 0;
-            return Buffer.from(images.flatMap(({ width, height }) =>
-                Array(height).fill([]).flatMap((_, i, r) => {
-                    const [ f, ...l ] = data.subarray(o, o += bit.byteWidth(width) + 1);
-                    return r[i] = l.map(reverseFilter(f, r[i - 1] ?? empty));
-                })));
+            let i = 0;
+            return bit.extract(images.flatMap(({ width, height }) =>
+                Array(height).fill([]).flatMap((_, y, r) => {
+                    const [ f, ...l ] = data.subarray(i, i += bit.byteWidth(width) + 1);
+                    return r[y] = l.map(reverseFilter(f, r[y - 1] ?? empty));
+                })), images);
         }
     }
 }

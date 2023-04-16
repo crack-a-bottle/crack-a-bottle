@@ -17,12 +17,10 @@ export = function adam7(width: number, height: number) {
             c: cols.flatMap(x => c.map(w => w + x).filter(w => w < width)),
             r: rows.flatMap(y => r.map(h => h + y).filter(h => h < height))
         })).filter(({ c, r }) => c.length > 0 && r.length > 0),
-        interlace(data: number[], channels: number, depth: number) {
-            const padWidth = (8 - width * channels * depth % 8) % 8 / depth;
+        interlace(data: number[], channels: number) {
             const coords = this.passes
-                .map(({ c, r }) => ({ c: c.concat(Array(padWidth).fill(NaN)), r }))
-                .flatMap(({ c, r }) => r.flatMap(y => c.map(x => !Number.isNaN(x) ? [x * channels, y] : [])))
-                .flatMap(p => Array(Math.max(p.length / 2 * channels, 1)).fill(0).map((_, b) => p.length > 0 ? [p[0] + b, p[1]] : p));
+                .flatMap(({ c, r }) => r.flatMap(y => c.map(x => [x * channels, y])))
+                .flatMap(([ x, y ]) => Array(channels).fill(0).map((_, b) => [x + b, y]));
 
             return Array(height).fill(Array(width * channels).fill(0)).flatMap((r: number[], y) =>
                 r.flatMap((_, x) => data[coords.findIndex(z => z[0] == x && z[1] == y)]));
