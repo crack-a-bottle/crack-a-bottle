@@ -11,7 +11,7 @@ export = function bits(channels: number, depth: number) {
                 data.reduce((a, x, i) => i % 2 == 0 ? a.concat(x << 8) : (a[a.length - 1] |= x, a), [] as number[]);
         },
         padWidth(width: number) {
-            return (8 - width * bpp % 8) / depth;
+            return (8 - width * bpp % 8) % 8 / depth;
         }
     }
 }

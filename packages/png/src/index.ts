@@ -215,7 +215,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 if (!idat || !idat.length) throw new SyntaxError("IDAT: Invalid inflate response");
                 const bitmap = bit.extract(filters(interlace ?
                     adam.passes.map(({ c, r }) => ({ width: bit.byteWidth(c.length) + bit.padWidth(c.length), height: r.length })) :
-                    [{ width: byteWidth + padWidth, height }], channels, depth).reverse(idat));
+                    [{ width: byteWidth, height }], channels, depth).reverse(idat));
 
                 json.data = (interlace ? adam.interlace(bitmap, channels, depth) : bitmap).reduce((a, x, i) => {
                     if (i % padWidth) a.push([]);
