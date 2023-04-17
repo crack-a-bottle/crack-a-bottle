@@ -8,7 +8,7 @@
     "url": "git+https://github.com/crack-a-bottle/crack-a-bottle.git"
   },
   "scripts": {
-    "docs": "typedoc"
+    "docs": "pnpm -C packages/crack-a-bottle exec typedoc"
   },
   "author": "hiimjustin000",
   "license": "MIT",

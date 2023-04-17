@@ -4,7 +4,7 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "inputs": ["../../tsconfig.json", "../../tsup.config.ts", "src/**/*.ts", "tsconfig.json", "tsup.config.ts"],
+      "inputs": ["../../tsconfig.json", "../../tsup.config.json", "src/**/*.ts", "tsconfig.json"],
       "outputs": ["dist/**"]
     }
   }

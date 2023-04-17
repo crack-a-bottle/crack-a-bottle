@@ -1,0 +1,16 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/tsup/schema.json",
+  "entry": ["src/index.ts"],
+  "external": [],
+  "noExternal": [],
+  "platform": "node",
+  "format": ["esm", "cjs"],
+  "target": "es2021",
+  "skipNodeModulesBundle": true,
+  "clean": true,
+  "minify": false,
+  "splitting": false,
+  "keepNames": true,
+  "sourcemap": true,
+  "esbuildPlugins": []
+}
