@@ -17,7 +17,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup --config ../../tsup.config.json && tsc --emitDeclarationOnly --declarationDir dist",
+    "build": "tsup",
     "docs": "typedoc",
     "prepack": "pnpm build",
     "test": "node examples"
