@@ -6,7 +6,7 @@ import { bits } from "./bits";
 import * as chunks from "./chunks";
 import filters from "./filter";
 
-const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130); // 00 00 00 49 45 4E 44 AE 42 60 82
+const END_SIGNATURE = Buffer.of(0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130); // 00 00 00 00 49 45 4E 44 AE 42 60 82
 const SIGNATURE = Buffer.of(137, 80, 78, 71, 13, 10, 26, 10); // 89 50 4E 47 0D 0A 1A 0A
 
 export interface PNG {
@@ -185,7 +185,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             case "tIME":
                 json.misc ??= {};
                 json.misc.tIME = `${[
-                    chunk.data.readUint16BE(0).toString(10),
+                    chunk.data.readUInt16BE(0).toString(10),
                     chunk.data[2].toString(10).padStart(2, "0"),
                     chunk.data[3].toString(10).padStart(2, "0")
                 ].join("-")}T${[
@@ -221,7 +221,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 const { width, height, depth } = json;
                 const { interlace, channels } = misc;
                 const adam = interlace ? adam7(width, height) : {
-                    passes: [{ c: Array(width), r: Array(height) }],
+                    passes: [{ c: Array<number>(width), r: Array<number>(height) }],
                     interlace: (x: number[]) => x
                 }
                 const bit = bits(channels, depth);

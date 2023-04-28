@@ -40,31 +40,32 @@ export function qoi(data: Buffer) {
     assert.strictEqual(json.colorspace % 2, json.colorspace, "Unsupported colorspace");
 
     const { width, height, type } = json;
-    const colors = Array(64).fill([0, 0, 0, 0].slice(0, type));
+    const colors = Array<number[]>(64).fill([0, 0, 0, 0].slice(0, type));
     colors[53] = [0, 0, 0, 255].slice(0, type);
     const end = data.indexOf(END_SIGNATURE);
 
     let c = [0, 0, 0, 255].slice(0, type);
-    let o = 14;
+    let i = 14;
     let l = 0;
-    Array(height).fill(0).forEach(() => {
-        json.data.push(Array(width).fill(0).flatMap(() => {
+    for (let y = 0; y < height; y++) {
+        json.data.push([]);
+        for (let x = 0; x < width; x++) {
             if (l > 0) l--;
-            else if (o < end) {
-                const px = data[o] & 63;
-                const chunk = data[o] & (data[o] > 253 ? 255 : 192);
+            else if (i < end) {
+                const px = data[i] & 63;
+                const chunk = data[i] & (data[i] > 253 ? 255 : 192);
                 switch (chunk) {
                     case QOIChunk.RGB:
-                        c[0] = data[++o];
-                        c[1] = data[++o];
-                        c[2] = data[++o];
+                        c[0] = data[++i];
+                        c[1] = data[++i];
+                        c[2] = data[++i];
                         break;
                     case QOIChunk.RGBA:
-                        c[0] = data[++o];
-                        c[1] = data[++o];
-                        c[2] = data[++o];
-                        c[3] = type == QOIType.RGBA ? data[o + 1] : c[3];
-                        o++;
+                        c[0] = data[++i];
+                        c[1] = data[++i];
+                        c[2] = data[++i];
+                        c[3] = type == QOIType.RGBA ? data[i + 1] : c[3];
+                        i++;
                         break;
                     case QOIChunk.INDEX:
                         c = colors[px].slice(0, type);
@@ -75,7 +76,7 @@ export function qoi(data: Buffer) {
                         c[2] += (px & 3) - 2;
                         break;
                     case QOIChunk.LUMA:
-                        const px2 = data[++o];
+                        const px2 = data[++i];
                         c[0] += px - 32 + ((px2 >> 4 & 15) - 8);
                         c[1] += px - 32;
                         c[2] += px - 32 + ((px2 & 15) - 8);
@@ -85,16 +86,17 @@ export function qoi(data: Buffer) {
                         break;
                 }
 
-                c = c.map(v => v & 255);
-                if (chunk != QOIChunk.RUN && chunk != QOIChunk.INDEX)
-                    colors.splice((c[0] * 3 + c[1] * 5 + c[2] * 7 + (c[3] ?? 255) * 11) % 64, 1, c);
+                c = c.slice(0, type).map(v => v & 255);
+                if (chunk != QOIChunk.RUN && chunk != QOIChunk.INDEX) {
+                    colors[(c[0] * 3 + c[1] * 5 + c[2] * 7 + (c[3] ?? 255) * 11) % 64] = c;
+                }
 
-                o++;
+                i++;
             }
 
-            return c;
-        }));
-    });
+            json.data[y].push(...c);
+        }
+    }
 
     return json;
 }
