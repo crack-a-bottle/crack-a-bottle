@@ -1,6 +1,6 @@
 {
   "name": "@crackabottle/bmp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The Device-Independent Bitmap plugin for crack-a-bottle.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -32,7 +32,7 @@
   },
   "homepage": "https://crackabottle.js.org/crack-a-bottle",
   "devDependencies": {
-    "@types/node": "^18.15.11",
+    "@types/node": "^18.16.3",
     "tsup": "^6.7.0",
     "typescript": "^5.0.4"
   }

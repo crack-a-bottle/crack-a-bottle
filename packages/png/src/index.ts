@@ -127,7 +127,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
             case "hIST":
                 json.misc ??= {};
                 json.misc.hIST ??= {};
-                chunk.data.reduce((a, x, i) => i % 2 == 0 ? a.concat(x << 8) : (a[a.length - 1] |= x, a), [] as number[])
+                chunk.data.reduce((a, x, i) => i % 2 == 0 ? a.concat(x << 8) : (a[a.length - 1] |= x, a), Array<number>())
                     .forEach((x, i) => i % 3 == 0 ? json.misc!.hIST![i / 3] = [x] : json.misc!.hIST![Math.floor(i / 3)].push(x));
                 break;
             case "pHYs":
@@ -160,13 +160,13 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 switch (chunk.data[name.length + 1]) {
                     case 8:
                         chunk.data.subarray(name.length + 2)
-                            .reduce((a, x, i) => i % 6 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
+                            .reduce((a, x, i) => i % 6 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), Array<number[]>())
                             .forEach((x, i) => json.misc!.sPLT![name][i] =
                                 [x[0], x[1], x[2], x[3], x[4] << 8 | x[5]]);
                         break;
                     case 16:
                         chunk.data.subarray(name.length + 2)
-                            .reduce((a, x, i) => i % 10 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), [] as number[][])
+                            .reduce((a, x, i) => i % 10 == 0 ? a.concat([[x]]) : (a[a.length - 1].push(x), a), Array<number[]>())
                             .forEach((x, i) => json.misc!.sPLT![name][i] =
                                 [x[0] << 8 | x[1], x[2] << 8 | x[3], x[4] << 8 | x[5], x[6] << 8 | x[7], x[8] << 8 | x[9]]);
                         break;
@@ -223,7 +223,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                 const adam = interlace ? adam7(width, height) : {
                     passes: [{ c: Array<number>(width), r: Array<number>(height) }],
                     interlace: (x: number[]) => x
-                }
+                };
                 const bit = bits(channels, depth);
 
                 idat = zlib.inflateSync(idat, {
@@ -236,7 +236,7 @@ export function png(data: Buffer, checkRedundancy: boolean = true) {
                     bit).reverse(idat), channels).reduce((a, x, i) => {
                     if (i % sampleWidth == 0) a.push([]);
                     return a[a.length - 1].push(x), a;
-                }, [] as number[][]);
+                }, Array<number[]>());
                 break;
         }
     }

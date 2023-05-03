@@ -17,7 +17,7 @@ export function bits(channels: number, depth: number): Bits {
             if (depth <= 8) {
                 const bitArray = [7, 6, 5, 4, 3, 2, 1, 0].slice(8 - 8 / depth).map(x => depth * x);
                 const max = 2 ** depth - 1;
-                const result = data.flatMap(x => bitArray.map(y => (x >> y) & max));
+                const result = data.flatMap(x => bitArray.map(y => x >> y & max));
                 let i = 0;
                 for (const { width, height } of images) {
                     const padWidth = (8 - width * bpp % 8) % 8 / depth;
@@ -31,7 +31,7 @@ export function bits(channels: number, depth: number): Bits {
                 if (i % 2 == 0) a.push(0);
                 a[a.length - 1] |= x << (i % 2 * 8);
                 return a;
-            }, [] as number[]);
+            }, Array<number>());
         }
     }
 }

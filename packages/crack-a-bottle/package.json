@@ -1,6 +1,6 @@
 {
   "name": "crack-a-bottle",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "High-quality image cracking/parsing tools.",
   "main": "lib/index.js",
   "module": "lib/index.mjs",
@@ -24,8 +24,8 @@
   },
   "homepage": "https://crackabottle.js.org/crack-a-bottle",
   "devDependencies": {
-    "@types/node": "^18.15.5",
-    "typedoc": "^0.24.4"
+    "@types/node": "^18.16.3",
+    "typedoc": "^0.24.6"
   },
   "dependencies": {
     "@crackabottle/bmp": "workspace:*",

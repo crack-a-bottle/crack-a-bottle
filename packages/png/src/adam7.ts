@@ -9,8 +9,8 @@ const pattern = [
 ]
 
 export = function adam7(width: number, height: number) {
-    const cols = Array<number>(Math.ceil(width / 8)).fill(0).map((_, x) => x * 8);
-    const rows = Array<number>(Math.ceil(height / 8)).fill(0).map((_, y) => y * 8);
+    const cols = Array(Math.ceil(width / 8)).fill(0).map((_, x) => x * 8);
+    const rows = Array(Math.ceil(height / 8)).fill(0).map((_, y) => y * 8);
 
     return {
         passes: pattern.map(({ c, r }) => ({
@@ -20,7 +20,7 @@ export = function adam7(width: number, height: number) {
         interlace(data: number[], channels: number) {
             const coords = this.passes
                 .flatMap(({ c, r }) => r.flatMap(y => c.map(x => [x * channels, y])))
-                .flatMap(([ x, y ]) => Array<number[][]>(channels).fill([]).map((_, b) => [x + b, y]));
+                .flatMap(([ x, y ]) => Array(channels).fill([]).map((_, b) => [x + b, y]));
 
             return Array<number[]>(height).fill(Array(width * channels).fill(0)).flatMap((r, y) =>
                 r.flatMap((_, x) => data[coords.findIndex(z => z[0] == x && z[1] == y)]));

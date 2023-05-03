@@ -64,8 +64,7 @@ export function qoi(data: Buffer) {
                         c[0] = data[++i];
                         c[1] = data[++i];
                         c[2] = data[++i];
-                        c[3] = type == QOIType.RGBA ? data[i + 1] : c[3];
-                        i++;
+                        c[3] = data[++i];
                         break;
                     case QOIChunk.INDEX:
                         c = colors[px].slice(0, type);
@@ -87,9 +86,8 @@ export function qoi(data: Buffer) {
                 }
 
                 c = c.slice(0, type).map(v => v & 255);
-                if (chunk != QOIChunk.RUN && chunk != QOIChunk.INDEX) {
+                if (chunk != QOIChunk.RUN && chunk != QOIChunk.INDEX)
                     colors[(c[0] * 3 + c[1] * 5 + c[2] * 7 + (c[3] ?? 255) * 11) % 64] = c;
-                }
 
                 i++;
             }
