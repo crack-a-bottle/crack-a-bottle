@@ -1,6 +1,6 @@
 {
   "name": "@crackabottle/png",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "The Portable Network Graphics plugin for crack-a-bottle.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

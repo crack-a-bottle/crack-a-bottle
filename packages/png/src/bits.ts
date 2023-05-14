@@ -29,7 +29,7 @@ export function bits(channels: number, depth: number): Bits {
                 return result;
             } else return data.reduce((a, x, i) => {
                 if (i % 2 == 0) a.push(0);
-                a[a.length - 1] |= x << (i % 2 * 8);
+                a[a.length - 1] |= x << ((1 - i % 2) * 8);
                 return a;
             }, Array<number>());
         }
